@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import asyncio
+import os
 
 import click
 import uvicorn
@@ -34,10 +35,11 @@ def run(config: str, dashboard: bool) -> None:
             from .dashboard.app import create_dashboard_app
 
             app = create_dashboard_app(bot)
+            port = int(os.environ.get("PORT", bot_config.dashboard.port))
             uv_config = uvicorn.Config(
                 app,
                 host=bot_config.dashboard.host,
-                port=bot_config.dashboard.port,
+                port=port,
                 log_level="info",
             )
             server = uvicorn.Server(uv_config)
