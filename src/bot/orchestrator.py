@@ -1,10 +1,9 @@
 from __future__ import annotations
 
 import asyncio
-import math
-import random
 from enum import Enum
 
+import aiohttp
 import structlog
 
 from ..config.schema import BotConfig, GridConfig
@@ -53,8 +52,7 @@ class BotOrchestrator:
         self._risk_mgr: RiskManager | None = None
         self._shutdown_event = asyncio.Event()
         self._main_task: asyncio.Task | None = None
-        self._sim_anchor_price: float = 0.0
-        self._sim_anchor_range: float = 0.0
+        self._last_live_price: float = 0.0
 
     async def start(self) -> None:
         self._status = BotStatus.STARTING
@@ -116,16 +114,31 @@ class BotOrchestrator:
             self._risk_mgr,
         )
 
-        # For paper trading, set initial price before initializing grid
+        # For paper trading, fetch real BTC price and auto-center the grid
         if isinstance(self._exchange, PaperConnector):
-            mid_price = (
-                self._config.grid.lower_price + self._config.grid.upper_price
-            ) / 2
-            self._sim_anchor_price = mid_price
-            self._sim_anchor_range = (
-                self._config.grid.upper_price - self._config.grid.lower_price
-            )
-            self._exchange.simulate_price(mid_price)
+            live_price = await self._fetch_live_price()
+            if live_price:
+                self._last_live_price = live_price
+                # Auto-center the grid around the real price
+                grid_range = (
+                    self._config.grid.upper_price - self._config.grid.lower_price
+                )
+                self._config.grid.lower_price = round(live_price - grid_range / 2, 2)
+                self._config.grid.upper_price = round(live_price + grid_range / 2, 2)
+                self._exchange.simulate_price(live_price)
+                logger.info(
+                    "live_price_init",
+                    price=live_price,
+                    grid_lower=self._config.grid.lower_price,
+                    grid_upper=self._config.grid.upper_price,
+                )
+            else:
+                mid_price = (
+                    self._config.grid.lower_price + self._config.grid.upper_price
+                ) / 2
+                self._last_live_price = mid_price
+                self._exchange.simulate_price(mid_price)
+                logger.warning("live_price_unavailable_using_config")
 
         await self._grid_engine.initialize_grid()
 
@@ -142,11 +155,13 @@ class BotOrchestrator:
         tick = 0
         try:
             while not self._shutdown_event.is_set():
-                # Simulate price movement in paper trading mode
+                # Get current price
                 if is_paper:
-                    current_price = self._simulate_next_price(tick)
+                    live_price = await self._fetch_live_price()
+                    if live_price:
+                        self._last_live_price = live_price
+                    current_price = self._last_live_price
                     self._exchange.simulate_price(current_price)
-                    tick += 1
                     # Process any fills that happened from the price move
                     for filled in self._exchange._last_fills:
                         self._position.record_fill(
@@ -215,22 +230,21 @@ class BotOrchestrator:
             self._status = BotStatus.ERROR
             logger.exception("bot_loop_error", error=str(e))
 
-    def _simulate_next_price(self, tick: int) -> float:
-        """Generate a realistic price random walk with mean-reversion.
-        Uses fixed anchor price to avoid feedback loop with trailing grid."""
-        mid = self._sim_anchor_price
-        grid_range = self._sim_anchor_range
-
-        # Sine wave for broad oscillation + random noise
-        cycle = math.sin(tick * 0.15) * (grid_range * 0.35)
-        noise = random.gauss(0, grid_range * 0.03)
-        # Secondary faster oscillation
-        ripple = math.sin(tick * 0.47) * (grid_range * 0.12)
-
-        price = mid + cycle + ripple + noise
-        # Clamp to stay positive
-        price = max(mid * 0.5, price)
-        return round(price, 2)
+    async def _fetch_live_price(self) -> float | None:
+        """Fetch real-time BTC/USD price from Coinbase public API."""
+        try:
+            async with aiohttp.ClientSession() as session:
+                async with session.get(
+                    "https://api.coinbase.com/v2/prices/BTC-USD/spot",
+                    timeout=aiohttp.ClientTimeout(total=5),
+                ) as resp:
+                    if resp.status == 200:
+                        data = await resp.json()
+                        price = float(data["data"]["amount"])
+                        return price
+        except Exception as e:
+            logger.debug("live_price_fetch_failed", error=str(e))
+        return None
 
     async def stop(self) -> None:
         self._status = BotStatus.STOPPING
