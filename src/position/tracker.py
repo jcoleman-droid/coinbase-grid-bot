@@ -15,6 +15,7 @@ class PositionState:
     unrealized_pnl: float = 0.0
     total_fees: float = 0.0
     trade_count: int = 0
+    secured_profits: float = 0.0
 
 
 class PositionTracker:
@@ -47,6 +48,10 @@ class PositionTracker:
             self._state.realized_pnl += profit
             self._state.base_balance -= amount
             self._state.quote_balance += amount * price - fee
+            # Skim profit to secured balance so it can't be reused for trading
+            if profit > 0:
+                self._state.secured_profits += profit
+                self._state.quote_balance -= profit
 
         self._state.total_fees += fee
         self._state.trade_count += 1
@@ -77,6 +82,7 @@ class PositionTracker:
                 "current_price": ticker.last,
                 "unrealized_pnl_usd": self._state.unrealized_pnl,
                 "realized_pnl_usd": self._state.realized_pnl,
+                "secured_profits_usd": self._state.secured_profits,
                 "total_equity_usd": total_equity,
             }
         )

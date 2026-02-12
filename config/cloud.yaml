@@ -5,9 +5,9 @@ exchange:
 
 grid:
   symbol: "SOL/USD"
-  lower_price: 150.0
-  upper_price: 250.0
-  num_levels: 20
+  lower_price: 68.0
+  upper_price: 88.0
+  num_levels: 30
   spacing: arithmetic
   order_size_usd: 25.0
   trailing_enabled: true

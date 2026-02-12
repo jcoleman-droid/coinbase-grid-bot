@@ -83,6 +83,7 @@ async def websocket_endpoint(websocket: WebSocket):
                         "unrealized_pnl": round(position.state.unrealized_pnl, 2),
                         "total_fees": round(position.state.total_fees, 2),
                         "trade_count": position.state.trade_count,
+                        "secured_profits": round(position.state.secured_profits, 2),
                     }
                     if position
                     else None

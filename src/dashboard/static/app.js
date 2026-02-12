@@ -83,6 +83,12 @@ function updateStatBar(d) {
         upnlEl.style.color = pnlColor(upnl);
 
         document.getElementById('total-fees').textContent = fmtUsd(fees);
+
+        const secured = d.position.secured_profits || 0;
+        const securedEl = document.getElementById('secured-profits');
+        securedEl.textContent = fmtPnl(secured);
+        securedEl.style.color = pnlColor(secured);
+
         document.getElementById('trade-count').textContent = d.position.trade_count || 0;
     }
 
