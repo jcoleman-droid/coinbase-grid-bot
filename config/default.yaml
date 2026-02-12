@@ -4,9 +4,9 @@ exchange:
   rate_limit_ms: 100
 
 grid:
-  symbol: "BTC/USD"
-  lower_price: 55000.0
-  upper_price: 65000.0
+  symbol: "SOL/USD"
+  lower_price: 150.0
+  upper_price: 250.0
   num_levels: 20
   spacing: arithmetic
   order_size_usd: 25.0

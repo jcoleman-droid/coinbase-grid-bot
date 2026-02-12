@@ -231,12 +231,14 @@ class BotOrchestrator:
             logger.exception("bot_loop_error", error=str(e))
 
     async def _fetch_live_price(self) -> float | None:
-        """Fetch real-time BTC/USD price from Coinbase public API."""
+        """Fetch real-time price from Coinbase public API for the configured symbol."""
         try:
+            # Convert "SOL/USD" -> "SOL-USD" for Coinbase API
+            pair = self._config.grid.symbol.replace("/", "-")
+            url = f"https://api.coinbase.com/v2/prices/{pair}/spot"
             async with aiohttp.ClientSession() as session:
                 async with session.get(
-                    "https://api.coinbase.com/v2/prices/BTC-USD/spot",
-                    timeout=aiohttp.ClientTimeout(total=5),
+                    url, timeout=aiohttp.ClientTimeout(total=5),
                 ) as resp:
                     if resp.status == 200:
                         data = await resp.json()
