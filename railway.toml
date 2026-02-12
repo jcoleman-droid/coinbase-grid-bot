@@ -1,0 +1,7 @@
+[build]
+builder = "nixpacks"
+
+[deploy]
+startCommand = "python -m src.main run --dashboard"
+healthcheckPath = "/api/status"
+restartPolicyType = "always"

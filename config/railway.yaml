@@ -1,0 +1,38 @@
+exchange:
+  name: coinbase
+  sandbox: false
+  rate_limit_ms: 100
+
+grid:
+  symbol: "SOL/USD"
+  lower_price: 68.0
+  upper_price: 88.0
+  num_levels: 10
+  spacing: arithmetic
+  order_size_usd: 50.0
+  trailing_enabled: true
+  trailing_trigger_pct: 75.0
+  trailing_rebalance_pct: 50.0
+  trailing_cooldown_secs: 60.0
+
+risk:
+  max_position_usd: 500.0
+  max_open_orders: 20
+  stop_loss_pct: 5.0
+  take_profit_pct: 3.0
+  max_drawdown_pct: 10.0
+
+paper_trading:
+  enabled: true
+  initial_balance_usd: 1000.0
+  initial_balance_base: 0.0
+  simulated_fee_pct: 0.004
+
+backtest:
+  default_timeframe: "1m"
+  slippage_bps: 5
+
+dashboard:
+  host: "0.0.0.0"
+  port: 8080
+  enable_controls: true
