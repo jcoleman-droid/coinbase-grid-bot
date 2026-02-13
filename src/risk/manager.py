@@ -4,7 +4,7 @@ import structlog
 
 from ..config.schema import RiskConfig
 from ..orders.manager import OrderManager
-from ..position.tracker import PositionTracker
+from ..position.tracker import MultiPairPositionTracker
 
 logger = structlog.get_logger()
 
@@ -13,7 +13,7 @@ class RiskManager:
     def __init__(
         self,
         config: RiskConfig,
-        position_tracker: PositionTracker,
+        position_tracker: MultiPairPositionTracker,
         order_manager: OrderManager,
     ):
         self._config = config
@@ -21,46 +21,72 @@ class RiskManager:
         self._orders = order_manager
         self._peak_equity: float = 0.0
         self._is_halted: bool = False
+        self._halted_pairs: set[str] = set()
 
-    def can_place_order(self, side: str, price: float) -> bool:
+    def can_place_order(
+        self, symbol: str, side: str, price: float, amount: float = 0.0
+    ) -> bool:
         if self._is_halted:
-            logger.warning("risk_halted", reason="bot is halted by risk manager")
+            logger.warning("risk_halted", reason="global halt active")
+            return False
+
+        if symbol in self._halted_pairs:
             return False
 
         if self._orders.open_order_count >= self._config.max_open_orders:
             logger.warning("risk_reject", reason="max_open_orders")
             return False
 
-        state = self._position.state
         if side == "buy":
-            current_position_value = state.base_balance * state.avg_entry_price
-            if current_position_value >= self._config.max_position_usd:
-                logger.warning("risk_reject", reason="max_position_usd")
+            cost = amount * price if amount > 0 else 0
+            if cost > 0 and not self._position.can_afford_buy(cost):
+                logger.warning(
+                    "risk_reject", reason="insufficient_pool", symbol=symbol
+                )
+                return False
+
+            pair_state = self._position.pair_state(symbol)
+            current_pair_value = pair_state.base_balance * pair_state.avg_entry_price
+            if current_pair_value >= self._config.max_position_usd_per_pair:
+                logger.warning(
+                    "risk_reject", reason="max_position_per_pair", symbol=symbol
+                )
+                return False
+
+            total_position = self._position.total_base_value_usd
+            if total_position >= self._config.max_position_usd:
+                logger.warning("risk_reject", reason="max_position_global")
                 return False
 
         return True
 
-    def check_stop_loss(self, current_price: float, lower_grid: float) -> bool:
+    def check_stop_loss(
+        self, symbol: str, current_price: float, lower_grid: float
+    ) -> bool:
         stop_price = lower_grid * (1 - self._config.stop_loss_pct / 100)
         if current_price <= stop_price:
             logger.critical(
                 "stop_loss_triggered",
+                symbol=symbol,
                 current_price=current_price,
                 stop_price=round(stop_price, 2),
             )
-            self._is_halted = True
+            self._halted_pairs.add(symbol)
             return True
         return False
 
-    def check_take_profit(self, current_price: float, upper_grid: float) -> bool:
+    def check_take_profit(
+        self, symbol: str, current_price: float, upper_grid: float
+    ) -> bool:
         tp_price = upper_grid * (1 + self._config.take_profit_pct / 100)
         if current_price >= tp_price:
             logger.info(
                 "take_profit_triggered",
+                symbol=symbol,
                 current_price=current_price,
                 tp_price=round(tp_price, 2),
             )
-            self._is_halted = True
+            self._halted_pairs.add(symbol)
             return True
         return False
 
@@ -76,8 +102,12 @@ class RiskManager:
                 return True
         return False
 
+    def is_pair_halted(self, symbol: str) -> bool:
+        return symbol in self._halted_pairs
+
     def reset_halt(self) -> None:
         self._is_halted = False
+        self._halted_pairs.clear()
         logger.info("risk_halt_reset")
 
     @property

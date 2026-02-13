@@ -7,6 +7,7 @@ router = APIRouter()
 
 
 class ReconfigureRequest(BaseModel):
+    symbol: str
     lower_price: float | None = None
     upper_price: float | None = None
     num_levels: int | None = None
@@ -40,11 +41,19 @@ async def reconfigure_bot(request: Request, body: ReconfigureRequest):
     if bot.status.value != "running":
         raise HTTPException(400, "Bot must be running to reconfigure")
 
-    current = bot._config.grid
-    updates = {k: v for k, v in body.model_dump().items() if v is not None}
+    # Find the matching grid config by symbol
+    current = None
+    for gc in bot._config.grids:
+        if gc.symbol == body.symbol:
+            current = gc
+            break
+    if not current:
+        raise HTTPException(404, f"Symbol {body.symbol} not found in config")
+
+    updates = {k: v for k, v in body.model_dump().items() if v is not None and k != "symbol"}
     new_config = current.model_copy(update=updates)
     await bot.reconfigure(new_config)
-    return {"status": "reconfigured", "new_config": new_config.model_dump()}
+    return {"status": "reconfigured", "symbol": body.symbol, "new_config": new_config.model_dump()}
 
 
 @router.post("/reset-halt")

@@ -3,9 +3,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Grid Bot Dashboard</title>
+    <title>Heisenberg Grid</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="/static/style.css">
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4/dist/chart.umd.min.js"></script>
 </head>
@@ -15,10 +15,12 @@
 <div class="header">
     <div class="header-left">
         <div class="logo">
-            <div class="logo-icon">G</div>
-            <span>GridBot</span>
+            <div class="logo-icon">Br</div>
+            <span>Heisenberg<span style="color:var(--text-muted);font-weight:400;font-size:11px;margin-left:6px">Grid</span></span>
         </div>
-        <span class="pair-badge" id="symbol">BTC/USD</span>
+        <select id="pair-selector" class="pair-badge" onchange="selectPair(this.value)">
+            <option value="__all__">All Pairs</option>
+        </select>
     </div>
     <div class="header-center">
         <div class="price-display">
@@ -27,14 +29,14 @@
         </div>
     </div>
     <div class="header-right">
-        <div class="trailing-badge" id="trailing-badge" style="display:none">TRAILING</div>
-        <div class="risk-alert" id="risk-alert">RISK HALT</div>
+        <div class="trailing-badge" id="trailing-badge" style="display:none">COOKING</div>
+        <div class="risk-alert" id="risk-alert">DANGER</div>
         <div class="status-pill status-idle" id="status-pill">
             <span class="dot"></span>
             <span id="status-text">IDLE</span>
         </div>
-        <button class="btn-start" id="btn-start" onclick="botAction('start')">Start</button>
-        <button class="btn-stop" id="btn-stop" onclick="botAction('stop')">Stop</button>
+        <button class="btn-start" id="btn-start" onclick="botAction('start')">Cook</button>
+        <button class="btn-stop" id="btn-stop" onclick="botAction('stop')">Shut Down</button>
     </div>
 </div>
 
@@ -44,8 +46,12 @@
     <!-- Stat Bar -->
     <div class="stat-bar">
         <div class="stat-item">
-            <span class="label">Equity</span>
+            <span class="label">Empire</span>
             <span class="value" id="total-equity">$0.00</span>
+        </div>
+        <div class="stat-item">
+            <span class="label">Cash Reserve</span>
+            <span class="value" id="available-usd">$0.00</span>
         </div>
         <div class="stat-item">
             <span class="label">Realized P&L</span>
@@ -60,15 +66,15 @@
             <span class="value" id="total-fees" style="color:var(--text-muted)">$0.00</span>
         </div>
         <div class="stat-item">
-            <span class="label">Secured Profits</span>
+            <span class="label">Stashed</span>
             <span class="value" id="secured-profits" style="color:var(--green)">$0.00</span>
         </div>
         <div class="stat-item">
-            <span class="label">Trades</span>
+            <span class="label">Cooks</span>
             <span class="value" id="trade-count">0</span>
         </div>
         <div class="stat-item">
-            <span class="label">Open Orders</span>
+            <span class="label">Active Batches</span>
             <span class="value" id="open-orders">0</span>
         </div>
     </div>
@@ -76,14 +82,14 @@
     <!-- Left: Grid Levels -->
     <div class="panel grid-panel">
         <div class="panel-header">
-            <span class="panel-title">Grid Levels</span>
+            <span class="panel-title">Formula</span>
             <div style="display:flex;align-items:center;gap:8px">
                 <span id="trailing-shifts" style="color:var(--accent);font-size:11px;display:none"></span>
                 <span class="panel-title" id="grid-count" style="color:var(--text-muted)">0 levels</span>
             </div>
         </div>
         <div class="panel-body" id="grid-levels">
-            <div class="empty-state">No grid active. Start the bot to see grid levels.</div>
+            <div class="empty-state">Lab is cold. Start cooking to see the formula.</div>
         </div>
     </div>
 
@@ -91,7 +97,7 @@
     <div class="center-panel">
         <div class="panel chart-panel">
             <div class="panel-header">
-                <span class="panel-title">Equity Curve</span>
+            <span class="panel-title">Empire Growth</span>
                 <div style="display:flex;gap:4px">
                     <span class="tab active" onclick="setChartPeriod('1h')">1H</span>
                     <span class="tab" onclick="setChartPeriod('6h')">6H</span>
@@ -113,6 +119,7 @@
                 <table>
                     <thead>
                         <tr>
+                            <th>Symbol</th>
                             <th>Side</th>
                             <th>Price</th>
                             <th>Amount</th>
@@ -121,7 +128,7 @@
                         </tr>
                     </thead>
                     <tbody id="orders-body">
-                        <tr><td colspan="5" class="empty-state">No orders</td></tr>
+                        <tr><td colspan="6" class="empty-state">No orders</td></tr>
                     </tbody>
                 </table>
             </div>
@@ -132,7 +139,7 @@
     <div class="sidebar">
         <div class="panel position-panel">
             <div class="panel-header">
-                <span class="panel-title">Position</span>
+                <span class="panel-title">Inventory</span>
             </div>
             <div class="position-grid">
                 <div class="pos-item">
@@ -156,7 +163,7 @@
 
         <div class="panel config-panel">
             <div class="panel-header">
-                <span class="panel-title">Grid Configuration</span>
+                <span class="panel-title">Lab Controls</span>
             </div>
             <div class="panel-body">
                 <div class="config-grid">
@@ -178,8 +185,8 @@
                     </div>
                 </div>
                 <div class="config-actions">
-                    <button class="btn-primary" onclick="reconfigure()">Apply</button>
-                    <button class="btn-secondary" onclick="botAction('reset-halt')">Reset Halt</button>
+                    <button class="btn-primary" onclick="reconfigure()">Cook</button>
+                    <button class="btn-secondary" onclick="botAction('reset-halt')">Clear DEA</button>
                 </div>
             </div>
         </div>

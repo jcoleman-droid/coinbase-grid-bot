@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from enum import Enum
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, model_validator
 
 
 class GridSpacing(str, Enum):
@@ -32,10 +32,15 @@ class GridConfig(BaseModel):
 
 class RiskConfig(BaseModel):
     max_position_usd: float = 5000.0
-    max_open_orders: int = 40
+    max_position_usd_per_pair: float = 200.0
+    max_open_orders: int = 200
     stop_loss_pct: float = 5.0
     take_profit_pct: float = 3.0
     max_drawdown_pct: float = 10.0
+
+
+class PoolConfig(BaseModel):
+    initial_balance_usd: float = 1000.0
 
 
 class PaperTradingConfig(BaseModel):
@@ -58,8 +63,17 @@ class DashboardConfig(BaseModel):
 
 class BotConfig(BaseModel):
     exchange: ExchangeConfig
-    grid: GridConfig
+    grids: list[GridConfig]
     risk: RiskConfig
+    pool: PoolConfig = PoolConfig()
     paper_trading: PaperTradingConfig = PaperTradingConfig()
     backtest: BacktestConfig = BacktestConfig()
     dashboard: DashboardConfig = DashboardConfig()
+
+    @model_validator(mode="before")
+    @classmethod
+    def migrate_single_grid(cls, data: dict) -> dict:
+        """Backward compat: accept 'grid' key and wrap it in a list."""
+        if isinstance(data, dict) and "grid" in data and "grids" not in data:
+            data["grids"] = [data.pop("grid")]
+        return data

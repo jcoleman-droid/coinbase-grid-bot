@@ -29,5 +29,5 @@ def paper_exchange():
         simulated_fee_pct=0.006,
     )
     connector = PaperConnector(config)
-    connector.simulate_price(60000.0)
+    connector.simulate_price(60000.0, symbol="BTC/USD")
     return connector

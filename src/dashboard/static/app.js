@@ -4,6 +4,8 @@ let equityChart = null;
 let currentTab = 'orders';
 let chartPeriod = '24h';
 let lastData = null;
+let selectedPair = '__all__';
+let knownPairs = new Set();
 
 // ─── Formatting ───
 const fmt = (n, d = 2) => Number(n).toLocaleString(undefined, { minimumFractionDigits: d, maximumFractionDigits: d });
@@ -14,6 +16,32 @@ function pnlColor(n) {
     if (n > 0) return 'var(--green)';
     if (n < 0) return 'var(--red)';
     return 'var(--text-secondary)';
+}
+
+// ─── Pair Selector ───
+function selectPair(pair) {
+    selectedPair = pair;
+    if (lastData) updateAll(lastData);
+}
+
+function updatePairSelector(pairs) {
+    const sel = document.getElementById('pair-selector');
+    const symbols = Object.keys(pairs || {});
+    // Only update if new pairs appear
+    let changed = false;
+    for (const s of symbols) {
+        if (!knownPairs.has(s)) { changed = true; knownPairs.add(s); }
+    }
+    if (!changed) return;
+
+    sel.innerHTML = '<option value="__all__">All Pairs</option>';
+    for (const s of symbols) {
+        const opt = document.createElement('option');
+        opt.value = s;
+        opt.textContent = s;
+        if (s === selectedPair) opt.selected = true;
+        sel.appendChild(opt);
+    }
 }
 
 // ─── WebSocket ───
@@ -39,15 +67,99 @@ function connectWebSocket() {
 
 // ─── Update Functions ───
 function updateAll(d) {
+    updatePairSelector(d.pairs);
     updateStatus(d.status);
-    updatePrice(d.current_price);
-    updateStatBar(d);
-    updateGrid(d.grid_levels, d.current_price);
-    updatePosition(d.position);
     updateRiskAlert(d.risk_halted);
-    updateTrailing(d.trailing, d.grid_config);
-    updateSymbol(d.grid_config);
-    updateConfigPlaceholders(d.grid_config);
+
+    if (selectedPair === '__all__') {
+        updateAllPairsView(d);
+    } else {
+        updateSinglePairView(d, selectedPair);
+    }
+}
+
+function updateAllPairsView(d) {
+    // Show aggregate stats
+    document.getElementById('current-price').textContent = '--';
+    document.getElementById('total-equity').textContent = fmtUsd(d.total_equity || 0);
+
+    if (d.pool) {
+        document.getElementById('available-usd').textContent = fmtUsd(d.pool.available_usd || 0);
+        const securedEl = document.getElementById('secured-profits');
+        securedEl.textContent = fmtPnl(d.pool.secured_profits || 0);
+        securedEl.style.color = pnlColor(d.pool.secured_profits || 0);
+        document.getElementById('total-fees').textContent = fmtUsd(d.pool.total_fees || 0);
+        document.getElementById('trade-count').textContent = d.pool.total_trade_count || 0;
+    }
+
+    // Aggregate P&L across all pairs
+    let totalRpnl = 0, totalUpnl = 0;
+    if (d.pairs) {
+        for (const p of Object.values(d.pairs)) {
+            totalRpnl += p.realized_pnl || 0;
+            totalUpnl += p.unrealized_pnl || 0;
+        }
+    }
+    const rpnlEl = document.getElementById('realized-pnl');
+    rpnlEl.textContent = fmtPnl(totalRpnl);
+    rpnlEl.style.color = pnlColor(totalRpnl);
+    const upnlEl = document.getElementById('unrealized-pnl');
+    upnlEl.textContent = fmtPnl(totalUpnl);
+    upnlEl.style.color = pnlColor(totalUpnl);
+
+    document.getElementById('open-orders').textContent = d.open_order_count || 0;
+
+    // Show all grid levels
+    updateGrid(d.grid_levels, 0);
+
+    // Position panel: aggregate
+    updatePosition(d.position);
+
+    // Trailing / config
+    document.getElementById('trailing-badge').style.display = 'none';
+    document.getElementById('trailing-shifts').style.display = 'none';
+}
+
+function updateSinglePairView(d, sym) {
+    const pair = d.pairs ? d.pairs[sym] : null;
+    if (!pair) return;
+
+    document.getElementById('current-price').textContent = pair.current_price > 0 ? fmtUsd(pair.current_price) : '$--';
+    document.getElementById('total-equity').textContent = fmtUsd(d.total_equity || 0);
+
+    if (d.pool) {
+        document.getElementById('available-usd').textContent = fmtUsd(d.pool.available_usd || 0);
+        const securedEl = document.getElementById('secured-profits');
+        securedEl.textContent = fmtPnl(d.pool.secured_profits || 0);
+        securedEl.style.color = pnlColor(d.pool.secured_profits || 0);
+        document.getElementById('total-fees').textContent = fmtUsd(d.pool.total_fees || 0);
+        document.getElementById('trade-count').textContent = pair.trade_count || 0;
+    }
+
+    const rpnlEl = document.getElementById('realized-pnl');
+    rpnlEl.textContent = fmtPnl(pair.realized_pnl || 0);
+    rpnlEl.style.color = pnlColor(pair.realized_pnl || 0);
+    const upnlEl = document.getElementById('unrealized-pnl');
+    upnlEl.textContent = fmtPnl(pair.unrealized_pnl || 0);
+    upnlEl.style.color = pnlColor(pair.unrealized_pnl || 0);
+
+    document.getElementById('open-orders').textContent = d.open_order_count || 0;
+
+    // Grid levels for this pair
+    updateGrid(pair.grid_levels || [], pair.current_price);
+
+    // Position
+    updatePosition({
+        base_balance: pair.base_balance || 0,
+        quote_balance: d.pool ? d.pool.available_usd : 0,
+        avg_entry_price: pair.avg_entry_price || 0,
+        realized_pnl: pair.realized_pnl || 0,
+        unrealized_pnl: pair.unrealized_pnl || 0,
+    });
+
+    // Trailing
+    updateTrailing(pair.trailing, pair.grid_config);
+    updateConfigPlaceholders(pair.grid_config);
 }
 
 function updateStatus(status) {
@@ -62,45 +174,12 @@ function updateStatus(status) {
         ['running', 'starting'].includes(status) ? '' : 'none';
 }
 
-function updatePrice(price) {
-    document.getElementById('current-price').textContent = price > 0 ? fmtUsd(price) : '$--';
-}
-
-function updateStatBar(d) {
-    document.getElementById('total-equity').textContent = fmtUsd(d.total_equity || 0);
-
-    if (d.position) {
-        const rpnl = d.position.realized_pnl || 0;
-        const upnl = d.position.unrealized_pnl || 0;
-        const fees = d.position.total_fees || 0;
-
-        const rpnlEl = document.getElementById('realized-pnl');
-        rpnlEl.textContent = fmtPnl(rpnl);
-        rpnlEl.style.color = pnlColor(rpnl);
-
-        const upnlEl = document.getElementById('unrealized-pnl');
-        upnlEl.textContent = fmtPnl(upnl);
-        upnlEl.style.color = pnlColor(upnl);
-
-        document.getElementById('total-fees').textContent = fmtUsd(fees);
-
-        const secured = d.position.secured_profits || 0;
-        const securedEl = document.getElementById('secured-profits');
-        securedEl.textContent = fmtPnl(secured);
-        securedEl.style.color = pnlColor(secured);
-
-        document.getElementById('trade-count').textContent = d.position.trade_count || 0;
-    }
-
-    document.getElementById('open-orders').textContent = d.open_order_count || 0;
-}
-
 function updateGrid(levels, currentPrice) {
     const container = document.getElementById('grid-levels');
     const countEl = document.getElementById('grid-count');
 
     if (!levels || levels.length === 0) {
-        container.innerHTML = '<div class="empty-state">No grid active. Start the bot to see grid levels.</div>';
+        container.innerHTML = '<div class="empty-state">Lab is cold. Start cooking to see the formula.</div>';
         countEl.textContent = '0 levels';
         return;
     }
@@ -115,7 +194,6 @@ function updateGrid(levels, currentPrice) {
         const l = sorted[i];
         const next = sorted[i + 1];
 
-        // Insert current price marker between levels
         if (!priceMarkerInserted && currentPrice > 0) {
             if (next && l.price >= currentPrice && next.price < currentPrice) {
                 html += `<div class="current-price-label">&#9654; Current: ${fmtUsd(currentPrice)}</div>`;
@@ -132,7 +210,6 @@ function updateGrid(levels, currentPrice) {
             </div>`;
     }
 
-    // If price is below all levels
     if (!priceMarkerInserted && currentPrice > 0) {
         html += `<div class="current-price-label">&#9654; Current: ${fmtUsd(currentPrice)}</div>`;
     }
@@ -143,13 +220,13 @@ function updateGrid(levels, currentPrice) {
 function updatePosition(pos) {
     if (!pos) return;
 
-    document.getElementById('base-balance').textContent = pos.base_balance.toFixed(8);
-    document.getElementById('quote-balance').textContent = fmtUsd(pos.quote_balance);
+    document.getElementById('base-balance').textContent = (pos.base_balance || 0).toFixed(8);
+    document.getElementById('quote-balance').textContent = fmtUsd(pos.quote_balance || 0);
 
     const avgEntry = document.getElementById('avg-entry');
     avgEntry.textContent = pos.avg_entry_price > 0 ? fmtUsd(pos.avg_entry_price) : '--';
 
-    const netPnl = pos.realized_pnl + pos.unrealized_pnl;
+    const netPnl = (pos.realized_pnl || 0) + (pos.unrealized_pnl || 0);
     const netEl = document.getElementById('net-pnl');
     netEl.textContent = fmtPnl(netPnl);
     netEl.style.color = pnlColor(netPnl);
@@ -169,7 +246,6 @@ function updateTrailing(trailing, config) {
             shifts.style.display = '';
             shifts.textContent = trailing.shift_count + ' shift' + (trailing.shift_count !== 1 ? 's' : '');
         }
-        // Update range display in grid panel header
         if (config) {
             const rangeEl = document.getElementById('grid-count');
             rangeEl.textContent = fmtUsd(config.lower_price) + ' - ' + fmtUsd(config.upper_price);
@@ -177,12 +253,6 @@ function updateTrailing(trailing, config) {
     } else {
         badge.style.display = 'none';
         shifts.style.display = 'none';
-    }
-}
-
-function updateSymbol(config) {
-    if (config && config.symbol) {
-        document.getElementById('symbol').textContent = config.symbol;
     }
 }
 
@@ -212,11 +282,12 @@ async function fetchOrders() {
 function renderOrders(orders) {
     const tbody = document.getElementById('orders-body');
     if (!orders || orders.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="5" class="empty-state">No orders</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="6" class="empty-state">No product on the street</td></tr>';
         return;
     }
     tbody.innerHTML = orders.map(o => `
         <tr>
+            <td style="color:var(--text-muted)">${o.symbol || ''}</td>
             <td class="${o.side}">${o.side.toUpperCase()}</td>
             <td>${fmtUsd(o.price)}</td>
             <td>${Number(o.amount).toFixed(8)}</td>
@@ -268,8 +339,8 @@ function renderChart(snapshots) {
     if (equityChart) equityChart.destroy();
 
     const gradient = ctx.createLinearGradient(0, 0, 0, 280);
-    gradient.addColorStop(0, 'rgba(59, 130, 246, 0.25)');
-    gradient.addColorStop(1, 'rgba(59, 130, 246, 0)');
+    gradient.addColorStop(0, 'rgba(0, 200, 83, 0.2)');
+    gradient.addColorStop(1, 'rgba(0, 200, 83, 0)');
 
     equityChart = new Chart(ctx, {
         type: 'line',
@@ -277,13 +348,13 @@ function renderChart(snapshots) {
             labels,
             datasets: [{
                 data: values,
-                borderColor: '#3b82f6',
+                borderColor: '#00c853',
                 backgroundColor: gradient,
                 fill: true,
                 tension: 0.4,
                 pointRadius: 0,
                 pointHoverRadius: 4,
-                pointHoverBackgroundColor: '#3b82f6',
+                pointHoverBackgroundColor: '#00e676',
                 borderWidth: 2,
             }]
         },
@@ -297,15 +368,15 @@ function renderChart(snapshots) {
             scales: {
                 x: {
                     display: true,
-                    grid: { color: 'rgba(30, 41, 59, 0.5)', drawBorder: false },
-                    ticks: { color: '#64748b', font: { size: 10 }, maxTicksLimit: 8 },
+                    grid: { color: 'rgba(26, 38, 19, 0.8)', drawBorder: false },
+                    ticks: { color: '#5a7843', font: { size: 10, family: 'JetBrains Mono' }, maxTicksLimit: 8 },
                 },
                 y: {
                     display: true,
-                    grid: { color: 'rgba(30, 41, 59, 0.5)', drawBorder: false },
+                    grid: { color: 'rgba(26, 38, 19, 0.8)', drawBorder: false },
                     ticks: {
-                        color: '#64748b',
-                        font: { size: 10 },
+                        color: '#5a7843',
+                        font: { size: 10, family: 'JetBrains Mono' },
                         callback: (v) => '$' + v.toLocaleString(),
                     },
                 }
@@ -313,13 +384,13 @@ function renderChart(snapshots) {
             plugins: {
                 legend: { display: false },
                 tooltip: {
-                    backgroundColor: '#1a2233',
-                    borderColor: '#2a3a52',
+                    backgroundColor: '#121a0e',
+                    borderColor: '#2a3d1e',
                     borderWidth: 1,
-                    titleColor: '#94a3b8',
-                    bodyColor: '#e2e8f0',
-                    titleFont: { size: 11 },
-                    bodyFont: { size: 13, weight: 'bold' },
+                    titleColor: '#5a7843',
+                    bodyColor: '#00e676',
+                    titleFont: { size: 11, family: 'JetBrains Mono' },
+                    bodyFont: { size: 13, weight: 'bold', family: 'JetBrains Mono' },
                     padding: 10,
                     callbacks: {
                         label: (ctx) => '$' + fmt(ctx.parsed.y),
@@ -343,7 +414,7 @@ async function botAction(action) {
     try {
         const res = await fetch(`/api/bot/${action}`, { method: 'POST' });
         const data = await res.json();
-        showToast(data.status ? `Bot: ${data.status}` : 'Action completed', 'success');
+        showToast(data.status ? `${data.status === 'running' ? 'Yeah, science!' : data.status.toUpperCase()}` : 'Done.', 'success');
         fetchOrders();
     } catch (e) {
         showToast('Action failed: ' + e.message, 'error');
@@ -352,6 +423,16 @@ async function botAction(action) {
 
 async function reconfigure() {
     const body = {};
+    // Use selected pair or first available
+    if (selectedPair !== '__all__') {
+        body.symbol = selectedPair;
+    } else if (knownPairs.size > 0) {
+        body.symbol = [...knownPairs][0];
+    } else {
+        showToast('Select a pair to reconfigure', 'error');
+        return;
+    }
+
     const lp = document.getElementById('cfg-lower').value;
     const up = document.getElementById('cfg-upper').value;
     const nl = document.getElementById('cfg-levels').value;
@@ -361,7 +442,7 @@ async function reconfigure() {
     if (nl) body.num_levels = parseInt(nl);
     if (sz) body.order_size_usd = parseFloat(sz);
 
-    if (Object.keys(body).length === 0) {
+    if (Object.keys(body).length <= 1) {
         showToast('Enter at least one value to change', 'error');
         return;
     }
@@ -373,8 +454,7 @@ async function reconfigure() {
             body: JSON.stringify(body),
         });
         if (res.ok) {
-            showToast('Grid reconfigured', 'success');
-            // Clear inputs
+            showToast(`New batch cooking: ${body.symbol}`, 'success');
             ['cfg-lower', 'cfg-upper', 'cfg-levels', 'cfg-size'].forEach(
                 id => document.getElementById(id).value = ''
             );

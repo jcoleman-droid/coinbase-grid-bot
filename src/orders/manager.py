@@ -19,7 +19,10 @@ class OrderManager:
         self._exchange = exchange
         self._order_repo = order_repo
         self._level_repo = level_repo
-        self._open_order_ids: set[str] = set()
+        self._open_order_ids: dict[str, set[str]] = {}
+
+    def _get_ids(self, symbol: str) -> set[str]:
+        return self._open_order_ids.setdefault(symbol, set())
 
     async def place_grid_order(
         self,
@@ -44,9 +47,10 @@ class OrderManager:
         await self._level_repo.update_status(
             grid_level_index, "order_placed", result.exchange_order_id
         )
-        self._open_order_ids.add(result.exchange_order_id)
+        self._get_ids(symbol).add(result.exchange_order_id)
         logger.info(
             "order_placed",
+            symbol=symbol,
             side=side,
             price=price,
             amount=round(amount, 8),
@@ -56,16 +60,17 @@ class OrderManager:
 
     async def check_fills(self, symbol: str) -> list[OrderResult]:
         filled = []
-        for oid in list(self._open_order_ids):
+        for oid in list(self._get_ids(symbol)):
             order = await self._exchange.get_order(oid, symbol)
             if order.status in ("closed", "filled"):
                 await self._order_repo.update_status(
                     oid, "filled", order.filled_amount, order.avg_fill_price, order.fee
                 )
-                self._open_order_ids.discard(oid)
+                self._get_ids(symbol).discard(oid)
                 filled.append(order)
                 logger.info(
                     "order_filled",
+                    symbol=symbol,
                     order_id=oid,
                     side=order.side,
                     price=order.avg_fill_price,
@@ -84,22 +89,27 @@ class OrderManager:
         success = await self._exchange.cancel_order(order_id, symbol)
         if success:
             await self._order_repo.update_status(order_id, "cancelled")
-            self._open_order_ids.discard(order_id)
+            self._get_ids(symbol).discard(order_id)
         return success
 
     async def reconcile_with_exchange(self, symbol: str) -> None:
         exchange_orders = await self._exchange.get_open_orders(symbol)
         exchange_ids = {o.exchange_order_id for o in exchange_orders}
-        stale = self._open_order_ids - exchange_ids
+        current_ids = self._get_ids(symbol)
+        stale = current_ids - exchange_ids
         for oid in stale:
             await self._order_repo.update_status(oid, "cancelled")
-        self._open_order_ids = exchange_ids
+        self._open_order_ids[symbol] = exchange_ids
         logger.info(
             "reconciled",
+            symbol=symbol,
             exchange_open=len(exchange_ids),
             stale_cancelled=len(stale),
         )
 
     @property
     def open_order_count(self) -> int:
-        return len(self._open_order_ids)
+        return sum(len(ids) for ids in self._open_order_ids.values())
+
+    def open_order_count_for(self, symbol: str) -> int:
+        return len(self._get_ids(symbol))

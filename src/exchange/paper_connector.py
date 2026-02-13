@@ -22,7 +22,7 @@ class PaperConnector:
         if config.initial_balance_base > 0:
             self._balances["BTC"] = config.initial_balance_base
         self._orders: dict[str, dict] = {}
-        self._last_price: float = 0.0
+        self._last_prices: dict[str, float] = {}
         self._last_fills: list[OrderResult] = []
 
     async def connect(self) -> None:
@@ -32,11 +32,12 @@ class PaperConnector:
         pass
 
     async def get_ticker(self, symbol: str) -> Ticker:
+        price = self._last_prices.get(symbol, 0.0)
         return Ticker(
             symbol=symbol,
-            last=self._last_price,
-            bid=self._last_price * 0.999,
-            ask=self._last_price * 1.001,
+            last=price,
+            bid=price * 0.999,
+            ask=price * 1.001,
             timestamp=int(time.time() * 1000),
         )
 
@@ -128,17 +129,28 @@ class PaperConnector:
     ) -> list[list]:
         return []
 
-    def simulate_price(self, price: float) -> list[OrderResult]:
-        """Simulate price movement. Call this to trigger fills on paper orders.
-        Returns list of orders that were filled."""
-        self._last_price = price
+    def simulate_price(self, price: float, symbol: str = "SOL/USD") -> list[OrderResult]:
+        """Simulate price movement for a single symbol. Backward-compatible wrapper."""
+        return self.simulate_prices({symbol: price})
+
+    def simulate_prices(self, prices: dict[str, float]) -> list[OrderResult]:
+        """Simulate price movement for multiple symbols at once.
+        Returns list of orders that were filled across all symbols."""
+        self._last_prices.update(prices)
         self._last_fills = []
         filled = []
-        base_currency = "BTC"
 
         for oid, o in list(self._orders.items()):
             if o["status"] != "open":
                 continue
+
+            sym = o["symbol"]
+            if sym not in prices:
+                continue
+
+            price = prices[sym]
+            base_currency = sym.split("/")[0]
+
             should_fill = (o["side"] == "buy" and price <= o["price"]) or (
                 o["side"] == "sell" and price >= o["price"]
             )
@@ -182,6 +194,7 @@ class PaperConnector:
                     order_id=oid,
                     side=o["side"],
                     price=o["price"],
+                    symbol=sym,
                 )
         self._last_fills = filled
         return filled

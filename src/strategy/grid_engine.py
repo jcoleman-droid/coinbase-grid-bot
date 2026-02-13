@@ -14,6 +14,31 @@ from .grid_math import calculate_order_amount, compute_grid_levels, determine_or
 logger = structlog.get_logger()
 
 
+def smart_round(value: float, price: float) -> float:
+    """Round order amounts based on the price magnitude.
+    Low-price coins like PEPE need fewer decimals, high-price coins need more."""
+    if price >= 1000:
+        return round(value, 6)
+    elif price >= 1:
+        return round(value, 4)
+    elif price >= 0.01:
+        return round(value, 2)
+    else:
+        return round(value, 0)
+
+
+def smart_price_round(price: float) -> float:
+    """Round prices to appropriate precision based on magnitude."""
+    if price >= 100:
+        return round(price, 2)
+    elif price >= 1:
+        return round(price, 4)
+    elif price >= 0.01:
+        return round(price, 6)
+    else:
+        return round(price, 10)
+
+
 @dataclass
 class GridLevel:
     index: int
@@ -53,23 +78,26 @@ class GridEngine:
 
         sides = determine_order_sides(prices, current_price)
         self._levels = [
-            GridLevel(index=i, price=round(p, 2), side=s)
+            GridLevel(index=i, price=smart_price_round(p), side=s)
             for i, (p, s) in enumerate(sides)
         ]
 
         placed = 0
         for level in self._levels:
-            if not self._risk_mgr.can_place_order(level.side, level.price):
-                continue
             amount = calculate_order_amount(
                 self._config.order_size_usd,
                 self._config.order_size_base,
                 level.price,
             )
+            amount = smart_round(amount, level.price)
+            if not self._risk_mgr.can_place_order(
+                self._config.symbol, level.side, level.price, amount
+            ):
+                continue
             order = await self._order_mgr.place_grid_order(
                 symbol=self._config.symbol,
                 side=level.side,
-                amount=round(amount, 8),
+                amount=amount,
                 price=level.price,
                 grid_level_index=level.index,
             )
@@ -96,17 +124,20 @@ class GridEngine:
 
         if 0 <= target_index < len(self._levels):
             target_level = self._levels[target_index]
-            if not self._risk_mgr.can_place_order(opposite_side, target_level.price):
-                return
             amount = calculate_order_amount(
                 self._config.order_size_usd,
                 self._config.order_size_base,
                 target_level.price,
             )
+            amount = smart_round(amount, target_level.price)
+            if not self._risk_mgr.can_place_order(
+                self._config.symbol, opposite_side, target_level.price, amount
+            ):
+                return
             order = await self._order_mgr.place_grid_order(
                 symbol=self._config.symbol,
                 side=opposite_side,
-                amount=round(amount, 8),
+                amount=amount,
                 price=target_level.price,
                 grid_level_index=target_index,
             )
@@ -175,8 +206,8 @@ class GridEngine:
         if not should_shift:
             return False
 
-        new_lower = round(lower + shift_amount, 2)
-        new_upper = round(upper + shift_amount, 2)
+        new_lower = smart_price_round(lower + shift_amount)
+        new_upper = smart_price_round(upper + shift_amount)
 
         if new_lower <= 0:
             return False

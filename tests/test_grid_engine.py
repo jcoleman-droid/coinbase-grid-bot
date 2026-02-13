@@ -5,7 +5,7 @@ from src.config.schema import GridConfig, GridSpacing, RiskConfig
 from src.db.repositories import GridLevelRepository, OrderRepository
 from src.exchange.paper_connector import PaperConnector
 from src.orders.manager import OrderManager
-from src.position.tracker import PositionTracker
+from src.position.tracker import MultiPairPositionTracker
 from src.risk.manager import RiskManager
 from src.strategy.grid_engine import GridEngine
 from src.db.repositories import PositionSnapshotRepository, TradeRepository
@@ -19,10 +19,11 @@ async def grid_engine(db, paper_exchange):
     snapshot_repo = PositionSnapshotRepository(db.conn)
 
     order_mgr = OrderManager(paper_exchange, order_repo, level_repo)
-    position = PositionTracker(
-        "BTC/USD", paper_exchange, trade_repo, snapshot_repo, initial_quote=10000.0
+    position = MultiPairPositionTracker(
+        ["BTC/USD"], paper_exchange, trade_repo, snapshot_repo, initial_usd=10000.0
     )
-    risk_mgr = RiskManager(RiskConfig(), position, order_mgr)
+    risk_config = RiskConfig(max_position_usd_per_pair=10000.0)
+    risk_mgr = RiskManager(risk_config, position, order_mgr)
 
     config = GridConfig(
         symbol="BTC/USD",
@@ -33,7 +34,7 @@ async def grid_engine(db, paper_exchange):
         order_size_usd=100.0,
     )
 
-    engine = GridEngine(config, RiskConfig(), paper_exchange, order_mgr, risk_mgr)
+    engine = GridEngine(config, risk_config, paper_exchange, order_mgr, risk_mgr)
     return engine
 
 

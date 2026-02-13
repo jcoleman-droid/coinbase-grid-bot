@@ -81,11 +81,23 @@ CREATE TABLE IF NOT EXISTS bot_state (
 
 CREATE INDEX IF NOT EXISTS idx_orders_status ON orders(status);
 CREATE INDEX IF NOT EXISTS idx_orders_exchange_id ON orders(exchange_order_id);
+CREATE INDEX IF NOT EXISTS idx_orders_symbol ON orders(symbol);
 CREATE INDEX IF NOT EXISTS idx_grid_levels_config ON grid_levels(config_id);
 CREATE INDEX IF NOT EXISTS idx_position_snapshots_ts ON position_snapshots(timestamp);
+CREATE INDEX IF NOT EXISTS idx_position_snapshots_symbol ON position_snapshots(symbol);
+CREATE INDEX IF NOT EXISTS idx_trades_symbol ON trades(symbol);
 """
+
+MIGRATIONS = [
+    "ALTER TABLE position_snapshots ADD COLUMN secured_profits_usd REAL NOT NULL DEFAULT 0.0",
+]
 
 
 async def run_migrations(conn: aiosqlite.Connection) -> None:
     await conn.executescript(SCHEMA)
+    for sql in MIGRATIONS:
+        try:
+            await conn.execute(sql)
+        except Exception:
+            pass  # Column already exists
     await conn.commit()

@@ -11,13 +11,40 @@ router = APIRouter()
 async def get_status(request: Request):
     bot = request.app.state.bot
     position = bot.position_tracker
+    prices = bot.last_live_prices if hasattr(bot, "last_live_prices") else {}
+
+    pairs = {}
+    if position:
+        for sym, ps in position.all_pair_states.items():
+            pairs[sym] = {
+                "base_balance": ps.base_balance,
+                "avg_entry_price": ps.avg_entry_price,
+                "realized_pnl": ps.realized_pnl,
+                "unrealized_pnl": ps.unrealized_pnl,
+                "trade_count": ps.trade_count,
+                "current_price": prices.get(sym, 0.0),
+            }
+
     return {
         "status": bot.status.value,
+        "symbols": bot.symbols if hasattr(bot, "symbols") else [],
+        "pool": (
+            {
+                "available_usd": position.pool.available_usd,
+                "secured_profits": position.pool.secured_profits,
+                "total_fees": position.pool.total_fees,
+                "total_trade_count": position.pool.total_trade_count,
+            }
+            if position
+            else None
+        ),
+        "total_equity": position.total_equity_usd if position else 0.0,
+        "pairs": pairs,
         "position": (
             {
-                "base_balance": position.state.base_balance,
-                "quote_balance": position.state.quote_balance,
-                "avg_entry_price": position.state.avg_entry_price,
+                "base_balance": 0,
+                "quote_balance": position.pool.available_usd,
+                "avg_entry_price": 0,
                 "realized_pnl": position.state.realized_pnl,
                 "unrealized_pnl": position.state.unrealized_pnl,
                 "total_fees": position.state.total_fees,
@@ -30,12 +57,30 @@ async def get_status(request: Request):
 
 
 @router.get("/grid")
-async def get_grid(request: Request):
-    engine = request.app.state.bot.grid_engine
-    if not engine:
-        return {"levels": []}
-    return {
-        "levels": [
+async def get_grid(request: Request, symbol: str | None = None):
+    engines = request.app.state.bot.grid_engines
+    if not engines:
+        return {"levels": {}}
+
+    if symbol:
+        engine = engines.get(symbol)
+        if not engine:
+            return {"levels": []}
+        return {
+            "levels": [
+                {
+                    "index": l.index,
+                    "price": l.price,
+                    "side": l.side,
+                    "status": l.status,
+                }
+                for l in engine.levels
+            ]
+        }
+
+    result = {}
+    for sym, engine in engines.items():
+        result[sym] = [
             {
                 "index": l.index,
                 "price": l.price,
@@ -44,7 +89,7 @@ async def get_grid(request: Request):
             }
             for l in engine.levels
         ]
-    }
+    return {"levels": result}
 
 
 @router.get("/orders")

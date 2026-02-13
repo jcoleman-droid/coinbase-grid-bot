@@ -74,7 +74,7 @@ def backtest(config: str, data: str, initial_balance: float) -> None:
 
     df = DataLoader.from_csv(data)
     engine = BacktestEngine(
-        grid_config=bot_config.grid,
+        grid_config=bot_config.grids[0],
         fee_pct=bot_config.paper_trading.simulated_fee_pct,
         slippage_bps=bot_config.backtest.slippage_bps,
         initial_quote=initial_balance,

@@ -213,8 +213,8 @@ class PositionSnapshotRepository:
             """INSERT INTO position_snapshots
                (symbol, base_balance, quote_balance, avg_entry_price,
                 current_price, unrealized_pnl_usd, realized_pnl_usd,
-                total_equity_usd)
-               VALUES (?, ?, ?, ?, ?, ?, ?, ?)""",
+                total_equity_usd, secured_profits_usd)
+               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)""",
             (
                 snapshot["symbol"],
                 snapshot["base_balance"],
@@ -224,6 +224,7 @@ class PositionSnapshotRepository:
                 snapshot["unrealized_pnl_usd"],
                 snapshot["realized_pnl_usd"],
                 snapshot["total_equity_usd"],
+                snapshot.get("secured_profits_usd", 0.0),
             ),
         )
         await self._conn.commit()

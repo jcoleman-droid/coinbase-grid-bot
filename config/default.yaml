@@ -3,21 +3,148 @@ exchange:
   sandbox: false
   rate_limit_ms: 100
 
-grid:
-  symbol: "SOL/USD"
-  lower_price: 68.0
-  upper_price: 88.0
-  num_levels: 30
-  spacing: arithmetic
-  order_size_usd: 25.0
-  trailing_enabled: true
-  trailing_trigger_pct: 75.0       # shift when price reaches 75% toward an edge
-  trailing_rebalance_pct: 50.0     # shift the grid by 50% of its range
-  trailing_cooldown_secs: 30.0     # minimum 30s between shifts (use 60+ for live)
+grids:
+  # ── Meme coins (highest volatility) ──
+  - symbol: "DOGE/USD"
+    lower_price: 0.0917
+    upper_price: 0.1013
+    num_levels: 15
+    spacing: arithmetic
+    order_size_usd: 12.0
+    trailing_enabled: true
+    trailing_trigger_pct: 60.0
+    trailing_rebalance_pct: 40.0
+    trailing_cooldown_secs: 15.0
+
+  - symbol: "PEPE/USD"
+    lower_price: 0.0000036
+    upper_price: 0.0000040
+    num_levels: 15
+    spacing: arithmetic
+    order_size_usd: 12.0
+    trailing_enabled: true
+    trailing_trigger_pct: 60.0
+    trailing_rebalance_pct: 40.0
+    trailing_cooldown_secs: 15.0
+
+  - symbol: "SHIB/USD"
+    lower_price: 0.0000060
+    upper_price: 0.0000066
+    num_levels: 15
+    spacing: arithmetic
+    order_size_usd: 12.0
+    trailing_enabled: true
+    trailing_trigger_pct: 60.0
+    trailing_rebalance_pct: 40.0
+    trailing_cooldown_secs: 15.0
+
+  - symbol: "WIF/USD"
+    lower_price: 0.2085
+    upper_price: 0.2305
+    num_levels: 15
+    spacing: arithmetic
+    order_size_usd: 12.0
+    trailing_enabled: true
+    trailing_trigger_pct: 60.0
+    trailing_rebalance_pct: 40.0
+    trailing_cooldown_secs: 15.0
+
+  - symbol: "BONK/USD"
+    lower_price: 0.0000060
+    upper_price: 0.0000066
+    num_levels: 15
+    spacing: arithmetic
+    order_size_usd: 12.0
+    trailing_enabled: true
+    trailing_trigger_pct: 60.0
+    trailing_rebalance_pct: 40.0
+    trailing_cooldown_secs: 15.0
+
+  - symbol: "FLOKI/USD"
+    lower_price: 0.0000293
+    upper_price: 0.0000323
+    num_levels: 15
+    spacing: arithmetic
+    order_size_usd: 12.0
+    trailing_enabled: true
+    trailing_trigger_pct: 60.0
+    trailing_rebalance_pct: 40.0
+    trailing_cooldown_secs: 15.0
+
+  # ── Volatile mid-caps ──
+  - symbol: "SOL/USD"
+    lower_price: 80.5
+    upper_price: 89.0
+    num_levels: 15
+    spacing: arithmetic
+    order_size_usd: 12.0
+    trailing_enabled: true
+    trailing_trigger_pct: 60.0
+    trailing_rebalance_pct: 40.0
+    trailing_cooldown_secs: 15.0
+
+  - symbol: "AVAX/USD"
+    lower_price: 8.72
+    upper_price: 9.63
+    num_levels: 15
+    spacing: arithmetic
+    order_size_usd: 12.0
+    trailing_enabled: true
+    trailing_trigger_pct: 60.0
+    trailing_rebalance_pct: 40.0
+    trailing_cooldown_secs: 15.0
+
+  - symbol: "SUI/USD"
+    lower_price: 0.924
+    upper_price: 1.021
+    num_levels: 15
+    spacing: arithmetic
+    order_size_usd: 12.0
+    trailing_enabled: true
+    trailing_trigger_pct: 60.0
+    trailing_rebalance_pct: 40.0
+    trailing_cooldown_secs: 15.0
+
+  - symbol: "NEAR/USD"
+    lower_price: 0.970
+    upper_price: 1.070
+    num_levels: 15
+    spacing: arithmetic
+    order_size_usd: 12.0
+    trailing_enabled: true
+    trailing_trigger_pct: 60.0
+    trailing_rebalance_pct: 40.0
+    trailing_cooldown_secs: 15.0
+
+  - symbol: "INJ/USD"
+    lower_price: 2.94
+    upper_price: 3.25
+    num_levels: 15
+    spacing: arithmetic
+    order_size_usd: 12.0
+    trailing_enabled: true
+    trailing_trigger_pct: 60.0
+    trailing_rebalance_pct: 40.0
+    trailing_cooldown_secs: 15.0
+
+  - symbol: "LINK/USD"
+    lower_price: 8.35
+    upper_price: 9.22
+    num_levels: 15
+    spacing: arithmetic
+    order_size_usd: 12.0
+    trailing_enabled: true
+    trailing_trigger_pct: 60.0
+    trailing_rebalance_pct: 40.0
+    trailing_cooldown_secs: 15.0
+
+pool:
+  initial_balance_usd: 1000.0
 
 risk:
-  max_position_usd: 500.0
-  max_open_orders: 40
+  max_position_usd: 900.0
+  max_position_usd_per_pair: 120.0
+  max_open_orders: 300
   stop_loss_pct: 5.0
   take_profit_pct: 3.0
   max_drawdown_pct: 10.0
@@ -26,7 +153,7 @@ paper_trading:
   enabled: true
   initial_balance_usd: 1000.0
   initial_balance_base: 0.0
-  simulated_fee_pct: 0.006
+  simulated_fee_pct: 0.001
 
 backtest:
   default_timeframe: "1m"
