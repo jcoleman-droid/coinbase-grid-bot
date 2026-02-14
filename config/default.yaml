@@ -4,147 +4,80 @@ exchange:
   rate_limit_ms: 100
 
 grids:
-  # ── Meme coins (highest volatility) ──
-  - symbol: "DOGE/USD"
-    lower_price: 0.0917
-    upper_price: 0.1013
-    num_levels: 15
+  # ── 6 most active pairs, $35 orders, tight 7% ranges ──
+  - symbol: "BONK/USD"
+    lower_price: 0.0000061
+    upper_price: 0.0000065
+    num_levels: 10
     spacing: arithmetic
-    order_size_usd: 12.0
+    order_size_usd: 35.0
     trailing_enabled: true
-    trailing_trigger_pct: 60.0
-    trailing_rebalance_pct: 40.0
-    trailing_cooldown_secs: 15.0
-
-  - symbol: "PEPE/USD"
-    lower_price: 0.0000036
-    upper_price: 0.0000040
-    num_levels: 15
-    spacing: arithmetic
-    order_size_usd: 12.0
-    trailing_enabled: true
-    trailing_trigger_pct: 60.0
-    trailing_rebalance_pct: 40.0
-    trailing_cooldown_secs: 15.0
-
-  - symbol: "SHIB/USD"
-    lower_price: 0.0000060
-    upper_price: 0.0000066
-    num_levels: 15
-    spacing: arithmetic
-    order_size_usd: 12.0
-    trailing_enabled: true
-    trailing_trigger_pct: 60.0
-    trailing_rebalance_pct: 40.0
-    trailing_cooldown_secs: 15.0
+    trailing_trigger_pct: 50.0
+    trailing_rebalance_pct: 30.0
+    trailing_cooldown_secs: 10.0
 
   - symbol: "WIF/USD"
-    lower_price: 0.2085
-    upper_price: 0.2305
-    num_levels: 15
+    lower_price: 0.215
+    upper_price: 0.231
+    num_levels: 10
     spacing: arithmetic
-    order_size_usd: 12.0
+    order_size_usd: 35.0
     trailing_enabled: true
-    trailing_trigger_pct: 60.0
-    trailing_rebalance_pct: 40.0
-    trailing_cooldown_secs: 15.0
+    trailing_trigger_pct: 50.0
+    trailing_rebalance_pct: 30.0
+    trailing_cooldown_secs: 10.0
 
-  - symbol: "BONK/USD"
-    lower_price: 0.0000060
-    upper_price: 0.0000066
-    num_levels: 15
+  - symbol: "PEPE/USD"
+    lower_price: 0.00000366
+    upper_price: 0.00000392
+    num_levels: 10
     spacing: arithmetic
-    order_size_usd: 12.0
+    order_size_usd: 35.0
     trailing_enabled: true
-    trailing_trigger_pct: 60.0
-    trailing_rebalance_pct: 40.0
-    trailing_cooldown_secs: 15.0
+    trailing_trigger_pct: 50.0
+    trailing_rebalance_pct: 30.0
+    trailing_cooldown_secs: 10.0
 
-  - symbol: "FLOKI/USD"
-    lower_price: 0.0000293
-    upper_price: 0.0000323
-    num_levels: 15
+  - symbol: "SHIB/USD"
+    lower_price: 0.00000615
+    upper_price: 0.00000659
+    num_levels: 10
     spacing: arithmetic
-    order_size_usd: 12.0
+    order_size_usd: 35.0
     trailing_enabled: true
-    trailing_trigger_pct: 60.0
-    trailing_rebalance_pct: 40.0
-    trailing_cooldown_secs: 15.0
-
-  # ── Volatile mid-caps ──
-  - symbol: "SOL/USD"
-    lower_price: 80.5
-    upper_price: 89.0
-    num_levels: 15
-    spacing: arithmetic
-    order_size_usd: 12.0
-    trailing_enabled: true
-    trailing_trigger_pct: 60.0
-    trailing_rebalance_pct: 40.0
-    trailing_cooldown_secs: 15.0
-
-  - symbol: "AVAX/USD"
-    lower_price: 8.72
-    upper_price: 9.63
-    num_levels: 15
-    spacing: arithmetic
-    order_size_usd: 12.0
-    trailing_enabled: true
-    trailing_trigger_pct: 60.0
-    trailing_rebalance_pct: 40.0
-    trailing_cooldown_secs: 15.0
+    trailing_trigger_pct: 50.0
+    trailing_rebalance_pct: 30.0
+    trailing_cooldown_secs: 10.0
 
   - symbol: "SUI/USD"
-    lower_price: 0.924
-    upper_price: 1.021
-    num_levels: 15
+    lower_price: 0.927
+    upper_price: 0.994
+    num_levels: 10
     spacing: arithmetic
-    order_size_usd: 12.0
+    order_size_usd: 35.0
     trailing_enabled: true
-    trailing_trigger_pct: 60.0
-    trailing_rebalance_pct: 40.0
-    trailing_cooldown_secs: 15.0
-
-  - symbol: "NEAR/USD"
-    lower_price: 0.970
-    upper_price: 1.070
-    num_levels: 15
-    spacing: arithmetic
-    order_size_usd: 12.0
-    trailing_enabled: true
-    trailing_trigger_pct: 60.0
-    trailing_rebalance_pct: 40.0
-    trailing_cooldown_secs: 15.0
+    trailing_trigger_pct: 50.0
+    trailing_rebalance_pct: 30.0
+    trailing_cooldown_secs: 10.0
 
   - symbol: "INJ/USD"
-    lower_price: 2.94
-    upper_price: 3.25
-    num_levels: 15
+    lower_price: 3.02
+    upper_price: 3.23
+    num_levels: 10
     spacing: arithmetic
-    order_size_usd: 12.0
+    order_size_usd: 35.0
     trailing_enabled: true
-    trailing_trigger_pct: 60.0
-    trailing_rebalance_pct: 40.0
-    trailing_cooldown_secs: 15.0
-
-  - symbol: "LINK/USD"
-    lower_price: 8.35
-    upper_price: 9.22
-    num_levels: 15
-    spacing: arithmetic
-    order_size_usd: 12.0
-    trailing_enabled: true
-    trailing_trigger_pct: 60.0
-    trailing_rebalance_pct: 40.0
-    trailing_cooldown_secs: 15.0
+    trailing_trigger_pct: 50.0
+    trailing_rebalance_pct: 30.0
+    trailing_cooldown_secs: 10.0
 
 pool:
   initial_balance_usd: 1000.0
 
 risk:
   max_position_usd: 900.0
-  max_position_usd_per_pair: 120.0
-  max_open_orders: 300
+  max_position_usd_per_pair: 200.0
+  max_open_orders: 200
   stop_loss_pct: 5.0
   take_profit_pct: 3.0
   max_drawdown_pct: 10.0

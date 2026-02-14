@@ -40,7 +40,7 @@ class BotStatus(str, Enum):
 
 
 class BotOrchestrator:
-    POLL_INTERVAL = 5.0
+    POLL_INTERVAL = 3.0
     SNAPSHOT_INTERVAL = 60.0
 
     def __init__(self, config: BotConfig, settings: Settings):

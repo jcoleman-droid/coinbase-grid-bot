@@ -27,7 +27,7 @@ class GridConfig(BaseModel):
     trailing_enabled: bool = False
     trailing_trigger_pct: float = Field(default=75.0, ge=50, le=95)
     trailing_rebalance_pct: float = Field(default=50.0, ge=10, le=100)
-    trailing_cooldown_secs: float = Field(default=60.0, ge=10)
+    trailing_cooldown_secs: float = Field(default=60.0, ge=5)
 
 
 class RiskConfig(BaseModel):
