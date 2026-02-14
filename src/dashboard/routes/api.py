@@ -137,3 +137,51 @@ async def get_equity_curve(request: Request):
     repo = PositionSnapshotRepository(db.conn)
     snapshots = await repo.get_all()
     return {"curve": snapshots}
+
+
+@router.get("/defenses")
+async def get_defenses(request: Request):
+    bot = request.app.state.bot
+
+    # Trend filter
+    trend_data = {}
+    tf = bot.trend_filter if hasattr(bot, "trend_filter") else None
+    if tf:
+        for sym, trend in tf.get_all_trends().items():
+            trend_data[sym] = {
+                "trend": trend.value,
+                "data_points": tf.data_points(sym),
+            }
+
+    # Position stop-loss
+    stop_loss_data = {}
+    sl = bot.stop_loss if hasattr(bot, "stop_loss") else None
+    if sl:
+        stop_loss_data = {
+            sym: round(remaining, 1)
+            for sym, remaining in sl.all_cooldowns.items()
+        }
+
+    # Pair rotation
+    rotation_data = {}
+    pr = bot.pair_rotator if hasattr(bot, "pair_rotator") else None
+    if pr:
+        rotation_data = {
+            "paused_pairs": pr.paused_pairs,
+            "scores": {
+                sym: {
+                    "score": round(ps.score, 4),
+                    "realized_pnl": round(ps.realized_pnl, 4),
+                    "unrealized_pnl": round(ps.unrealized_pnl, 4),
+                    "trade_count": ps.trade_count,
+                    "trend": ps.trend.value,
+                }
+                for sym, ps in pr.latest_scores.items()
+            },
+        }
+
+    return {
+        "trend_filter": trend_data,
+        "position_stop_loss_cooldowns": stop_loss_data,
+        "pair_rotation": rotation_data,
+    }

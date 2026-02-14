@@ -22,7 +22,10 @@ from ..exchange.paper_connector import PaperConnector
 from ..orders.manager import OrderManager
 from ..position.tracker import MultiPairPositionTracker
 from ..risk.manager import RiskManager
+from ..risk.position_stop_loss import PositionStopLoss
 from ..strategy.grid_engine import GridEngine, smart_price_round
+from ..strategy.pair_rotator import PairRotator
+from ..strategy.trend_filter import TrendFilter
 
 logger = structlog.get_logger()
 
@@ -50,6 +53,9 @@ class BotOrchestrator:
         self._order_mgr: OrderManager | None = None
         self._position: MultiPairPositionTracker | None = None
         self._risk_mgr: RiskManager | None = None
+        self._trend_filter: TrendFilter | None = None
+        self._stop_loss: PositionStopLoss | None = None
+        self._pair_rotator: PairRotator | None = None
         self._shutdown_event = asyncio.Event()
         self._main_task: asyncio.Task | None = None
         self._last_live_prices: dict[str, float] = {}
@@ -103,9 +109,30 @@ class BotOrchestrator:
             initial_usd=initial_usd,
         )
 
+        # Defensive features
+        if self._config.trend_filter.enabled:
+            self._trend_filter = TrendFilter(
+                short_window=self._config.trend_filter.short_window,
+                long_window=self._config.trend_filter.long_window,
+            )
+
+        if self._config.position_stop_loss.enabled:
+            self._stop_loss = PositionStopLoss(
+                threshold_pct=self._config.position_stop_loss.threshold_pct,
+                cooldown_secs=self._config.position_stop_loss.cooldown_secs,
+            )
+
+        if self._config.pair_rotation.enabled:
+            self._pair_rotator = PairRotator(
+                evaluation_interval_secs=self._config.pair_rotation.evaluation_interval_secs,
+                pause_threshold=self._config.pair_rotation.pause_threshold,
+                min_trades_before_eval=self._config.pair_rotation.min_trades_before_eval,
+            )
+
         # Risk manager (shared)
         self._risk_mgr = RiskManager(
-            self._config.risk, self._position, self._order_mgr
+            self._config.risk, self._position, self._order_mgr,
+            trend_filter=self._trend_filter,
         )
 
         # Fetch live prices for all pairs and auto-center grids
@@ -188,6 +215,12 @@ class BotOrchestrator:
                         except Exception as e:
                             logger.debug("ticker_failed", symbol=sym, error=str(e))
 
+                # ── Record prices for trend filter ──
+                if self._trend_filter:
+                    for sym, price in self._last_live_prices.items():
+                        if price > 0:
+                            self._trend_filter.record_price(sym, price)
+
                 # ── Per-pair logic ──
                 for grid_cfg in self._config.grids:
                     sym = grid_cfg.symbol
@@ -198,6 +231,23 @@ class BotOrchestrator:
                     current_price = self._last_live_prices.get(sym, 0.0)
                     if current_price <= 0:
                         continue
+
+                    # Skip paused pairs (pair rotation)
+                    if self._pair_rotator and self._pair_rotator.is_paused(sym):
+                        continue
+
+                    # Position stop-loss check
+                    if self._stop_loss:
+                        if self._stop_loss.is_in_cooldown(sym):
+                            continue
+                        if self._stop_loss.should_trigger(
+                            sym, self._position, current_price
+                        ):
+                            await engine.cancel_all_grid_orders()
+                            await self._stop_loss.execute_stop_loss(
+                                sym, self._exchange, self._position
+                            )
+                            continue
 
                     # Risk checks (skip when trailing)
                     if not grid_cfg.trailing_enabled:
@@ -236,6 +286,20 @@ class BotOrchestrator:
                                 new_upper=grid_cfg.upper_price,
                                 shifts=engine.trailing_shift_count,
                             )
+
+                # ── Pair rotation evaluation ──
+                if self._pair_rotator and self._pair_rotator.should_evaluate():
+                    scores = self._pair_rotator.evaluate_pairs(
+                        self._position, self._trend_filter
+                    )
+                    to_pause = self._pair_rotator.get_pairs_to_pause(scores)
+                    for sym in to_pause:
+                        engine = self._grid_engines.get(sym)
+                        if engine:
+                            await engine.cancel_all_grid_orders()
+                        await self._pair_rotator.sell_off_pair(
+                            sym, self._exchange, self._position
+                        )
 
                 # ── Global checks ──
                 total_equity = self._position.total_equity_usd if self._position else 0
@@ -367,6 +431,18 @@ class BotOrchestrator:
     @property
     def database(self) -> Database | None:
         return self._db
+
+    @property
+    def trend_filter(self) -> TrendFilter | None:
+        return self._trend_filter
+
+    @property
+    def stop_loss(self) -> PositionStopLoss | None:
+        return self._stop_loss
+
+    @property
+    def pair_rotator(self) -> PairRotator | None:
+        return self._pair_rotator
 
     @property
     def last_live_prices(self) -> dict[str, float]:

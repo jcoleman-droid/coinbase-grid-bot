@@ -25,6 +25,10 @@ class ExchangeInterface(Protocol):
 
     async def get_open_orders(self, symbol: str) -> list[OrderResult]: ...
 
+    async def place_market_order(
+        self, symbol: str, side: str, amount: float
+    ) -> OrderResult: ...
+
     async def fetch_ohlcv(
         self,
         symbol: str,

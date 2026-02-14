@@ -64,6 +64,23 @@ class CoinbaseConnector:
         )
         return OrderResult.from_ccxt(raw)
 
+    @retry_with_backoff(
+        max_retries=3,
+        base_delay=1.0,
+        retryable_exceptions=(ccxt.NetworkError, ccxt.ExchangeNotAvailable),
+    )
+    async def place_market_order(
+        self, symbol: str, side: str, amount: float
+    ) -> OrderResult:
+        await self._rate_limiter.acquire()
+        raw = await self._exchange.create_order(
+            symbol=symbol,
+            type="market",
+            side=side,
+            amount=amount,
+        )
+        return OrderResult.from_ccxt(raw)
+
     @retry_with_backoff(max_retries=3, base_delay=0.5)
     async def cancel_order(self, order_id: str, symbol: str) -> bool:
         await self._rate_limiter.acquire()

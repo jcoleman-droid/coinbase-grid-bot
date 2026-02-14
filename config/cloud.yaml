@@ -159,6 +159,22 @@ backtest:
   default_timeframe: "1m"
   slippage_bps: 5
 
+trend_filter:
+  enabled: true
+  short_window: 10
+  long_window: 60
+
+position_stop_loss:
+  enabled: true
+  threshold_pct: 2.0
+  cooldown_secs: 300.0
+
+pair_rotation:
+  enabled: true
+  evaluation_interval_secs: 1800.0
+  pause_threshold: -1.0
+  min_trades_before_eval: 5
+
 dashboard:
   host: "0.0.0.0"
   port: 8080

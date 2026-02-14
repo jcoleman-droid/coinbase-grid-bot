@@ -5,6 +5,7 @@ import structlog
 from ..config.schema import RiskConfig
 from ..orders.manager import OrderManager
 from ..position.tracker import MultiPairPositionTracker
+from ..strategy.trend_filter import TrendFilter
 
 logger = structlog.get_logger()
 
@@ -15,10 +16,12 @@ class RiskManager:
         config: RiskConfig,
         position_tracker: MultiPairPositionTracker,
         order_manager: OrderManager,
+        trend_filter: TrendFilter | None = None,
     ):
         self._config = config
         self._position = position_tracker
         self._orders = order_manager
+        self._trend_filter = trend_filter
         self._peak_equity: float = 0.0
         self._is_halted: bool = False
         self._halted_pairs: set[str] = set()
@@ -35,6 +38,13 @@ class RiskManager:
 
         if self._orders.open_order_count >= self._config.max_open_orders:
             logger.warning("risk_reject", reason="max_open_orders")
+            return False
+
+        if (
+            side == "buy"
+            and self._trend_filter is not None
+            and not self._trend_filter.should_allow_buy(symbol)
+        ):
             return False
 
         if side == "buy":

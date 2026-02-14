@@ -80,6 +80,52 @@ class PaperConnector:
             timestamp=int(time.time() * 1000),
         )
 
+    async def place_market_order(
+        self, symbol: str, side: str, amount: float
+    ) -> OrderResult:
+        """Simulate a market order that fills immediately at current price."""
+        price = self._last_prices.get(symbol, 0.0)
+        if price <= 0:
+            raise ValueError(f"No price available for {symbol}")
+        oid = str(uuid.uuid4())[:12]
+        base_currency = symbol.split("/")[0]
+        fee = amount * price * self._fee_pct
+
+        if side == "sell":
+            if self._balances.get(base_currency, 0) < amount:
+                raise ValueError(f"Insufficient {base_currency} balance")
+            self._balances[base_currency] -= amount
+            self._balances["USD"] += amount * price - fee
+        else:
+            cost = amount * price + fee
+            if self._balances.get("USD", 0) < cost:
+                raise ValueError("Insufficient USD balance")
+            self._balances["USD"] -= cost
+            self._balances[base_currency] = self._balances.get(base_currency, 0) + amount
+
+        result = OrderResult(
+            exchange_order_id=oid,
+            symbol=symbol,
+            side=side,
+            order_type="market",
+            price=price,
+            amount=amount,
+            filled_amount=amount,
+            avg_fill_price=price,
+            fee=fee,
+            status="closed",
+            timestamp=int(time.time() * 1000),
+        )
+        logger.info(
+            "paper_market_order_filled",
+            order_id=oid,
+            side=side,
+            price=price,
+            amount=amount,
+            symbol=symbol,
+        )
+        return result
+
     async def cancel_order(self, order_id: str, symbol: str) -> bool:
         if order_id in self._orders:
             self._orders[order_id]["status"] = "cancelled"

@@ -61,6 +61,25 @@ class DashboardConfig(BaseModel):
     enable_controls: bool = True
 
 
+class TrendFilterConfig(BaseModel):
+    enabled: bool = True
+    short_window: int = 10
+    long_window: int = 60
+
+
+class PositionStopLossConfig(BaseModel):
+    enabled: bool = True
+    threshold_pct: float = 2.0
+    cooldown_secs: float = 300.0
+
+
+class PairRotationConfig(BaseModel):
+    enabled: bool = True
+    evaluation_interval_secs: float = 1800.0
+    pause_threshold: float = -1.0
+    min_trades_before_eval: int = 5
+
+
 class BotConfig(BaseModel):
     exchange: ExchangeConfig
     grids: list[GridConfig]
@@ -69,6 +88,9 @@ class BotConfig(BaseModel):
     paper_trading: PaperTradingConfig = PaperTradingConfig()
     backtest: BacktestConfig = BacktestConfig()
     dashboard: DashboardConfig = DashboardConfig()
+    trend_filter: TrendFilterConfig = TrendFilterConfig()
+    position_stop_loss: PositionStopLossConfig = PositionStopLossConfig()
+    pair_rotation: PairRotationConfig = PairRotationConfig()
 
     @model_validator(mode="before")
     @classmethod
