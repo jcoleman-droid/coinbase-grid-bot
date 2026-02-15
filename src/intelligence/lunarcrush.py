@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 import time
 
 import aiohttp
@@ -9,30 +10,29 @@ from ..config.schema import LunarCrushConfig
 
 logger = structlog.get_logger()
 
-# Map trading pair symbols to LunarCrush topic names
+# Map trading pair symbols to CoinGecko IDs
 SYMBOL_MAP: dict[str, str] = {
     "BONK/USD": "bonk",
-    "WIF/USD": "wif",
+    "WIF/USD": "dogwifhat",
     "PEPE/USD": "pepe",
-    "SHIB/USD": "shib",
+    "SHIB/USD": "shiba-inu",
     "SUI/USD": "sui",
-    "INJ/USD": "injective",
+    "INJ/USD": "injective-protocol",
     "BTC/USD": "bitcoin",
     "ETH/USD": "ethereum",
     "SOL/USD": "solana",
     "DOGE/USD": "dogecoin",
-    "XRP/USD": "xrp",
+    "XRP/USD": "ripple",
     "ADA/USD": "cardano",
 }
 
 
 class LunarCrushProvider:
-    """Fetches galaxy score and sentiment from LunarCrush public API.
+    """Fetches sentiment scores from CoinGecko free API.
 
+    Uses sentiment_votes_up_percentage (0-100) as the primary score.
     Caches results with a configurable TTL to avoid rate limits.
     """
-
-    BASE_URL = "https://lunarcrush.com/api4/public/topic"
 
     def __init__(self, config: LunarCrushConfig):
         self._config = config
@@ -48,31 +48,44 @@ class LunarCrushProvider:
         try:
             async with aiohttp.ClientSession() as session:
                 for sym in symbols:
-                    topic = SYMBOL_MAP.get(sym)
-                    if not topic:
+                    coin_id = SYMBOL_MAP.get(sym)
+                    if not coin_id:
                         continue
                     try:
-                        url = f"{self.BASE_URL}/{topic}/v1"
+                        url = (
+                            f"https://api.coingecko.com/api/v3/coins/{coin_id}"
+                            "?localization=false&tickers=false&market_data=false"
+                            "&community_data=true&developer_data=false&sparkline=false"
+                        )
                         async with session.get(
                             url, timeout=aiohttp.ClientTimeout(total=10)
                         ) as resp:
                             if resp.status == 200:
                                 data = await resp.json()
-                                topic_data = data.get("data", {})
+                                sentiment_up = data.get(
+                                    "sentiment_votes_up_percentage", 0
+                                ) or 0
                                 new_cache[sym] = {
-                                    "galaxy_score": topic_data.get("galaxy_score", 0),
-                                    "sentiment": topic_data.get("sentiment", 0),
-                                    "interactions": topic_data.get("interactions_24h", 0),
-                                    "topic": topic,
+                                    "galaxy_score": sentiment_up,
+                                    "sentiment": sentiment_up,
+                                    "sentiment_down": data.get(
+                                        "sentiment_votes_down_percentage", 0
+                                    ) or 0,
+                                    "source": "coingecko",
                                 }
+                            elif resp.status == 429:
+                                logger.debug("coingecko_rate_limited")
+                                break
                             else:
                                 logger.debug(
-                                    "lunarcrush_fetch_status",
+                                    "coingecko_fetch_status",
                                     symbol=sym, status=resp.status,
                                 )
+                        # Small delay between calls to respect rate limits
+                        await asyncio.sleep(1.5)
                     except Exception as e:
                         logger.debug(
-                            "lunarcrush_fetch_one_failed",
+                            "coingecko_fetch_one_failed",
                             symbol=sym, error=str(e),
                         )
 
@@ -80,7 +93,7 @@ class LunarCrushProvider:
                 self._cache = new_cache
                 self._cache_time = now
                 logger.info(
-                    "lunarcrush_updated",
+                    "sentiment_updated",
                     coins=len(new_cache),
                     scores={
                         s: round(d["galaxy_score"], 1)
@@ -88,7 +101,7 @@ class LunarCrushProvider:
                     },
                 )
         except Exception as e:
-            logger.warning("lunarcrush_fetch_failed", error=str(e))
+            logger.warning("sentiment_fetch_failed", error=str(e))
 
     def get_score(self, symbol: str) -> dict | None:
         return self._cache.get(symbol)
