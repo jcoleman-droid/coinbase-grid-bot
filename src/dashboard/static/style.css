@@ -578,6 +578,104 @@ td.sell { color: var(--red); font-weight: 700; }
     .main {
         grid-template-columns: 1fr;
         grid-template-rows: auto auto auto auto;
+        height: auto;
+        min-height: calc(100vh - 56px);
     }
     .stat-bar { flex-wrap: wrap; height: auto; padding: 8px 16px; gap: 4px; }
+    .chart-panel { min-height: 250px; }
+    .orders-panel { height: 250px; }
+}
+
+/* ─── Mobile ─── */
+@media (max-width: 680px) {
+    body { font-size: 14px; }
+
+    /* Header: stack into two rows */
+    .header {
+        flex-wrap: wrap;
+        height: auto;
+        padding: 10px 12px;
+        gap: 8px;
+    }
+    .header-left { order: 1; flex: 1; min-width: 0; }
+    .header-center { order: 3; flex-basis: 100%; justify-content: center; }
+    .header-right { order: 2; gap: 6px; }
+
+    .logo { font-size: 14px; gap: 8px; }
+    .logo-icon { width: 28px; height: 28px; font-size: 13px; }
+
+    .price-display .value { font-size: 26px; }
+    .price-display .label { font-size: 10px; }
+
+    .pair-badge { font-size: 13px; padding: 6px 10px; }
+
+    .status-pill { padding: 6px 10px; font-size: 10px; }
+    .trailing-badge { font-size: 9px; padding: 4px 8px; }
+
+    button { padding: 8px 14px; font-size: 11px; }
+
+    /* Stat bar: 2x4 grid */
+    .stat-bar {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 0;
+        padding: 0;
+        height: auto;
+    }
+    .stat-item {
+        padding: 10px 12px;
+        border-right: none;
+        border-bottom: 1px solid var(--border);
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 2px;
+    }
+    .stat-item:nth-child(odd) { border-right: 1px solid var(--border); }
+    .stat-item .label { font-size: 9px; }
+    .stat-item .value { font-size: 16px; }
+
+    /* Main: single column, auto height */
+    .main {
+        grid-template-columns: 1fr;
+        grid-template-rows: auto;
+        height: auto;
+        min-height: auto;
+    }
+
+    /* Chart */
+    .chart-panel { min-height: 220px; }
+    #chart-container { padding: 8px; }
+
+    /* Orders table: horizontal scroll */
+    .orders-panel { height: auto; max-height: 300px; }
+    .orders-panel .panel-body { overflow-x: auto; }
+    table { min-width: 500px; }
+    th { font-size: 9px; padding: 8px; }
+    td { font-size: 12px; padding: 8px; }
+
+    /* Grid levels panel */
+    .grid-panel { max-height: 350px; }
+    .grid-level { padding: 8px 12px; font-size: 12px; }
+    .grid-level .status-tag { font-size: 10px; }
+
+    /* Sidebar panels */
+    .position-grid { grid-template-columns: 1fr 1fr; }
+    .pos-item { padding: 10px 12px; }
+    .pos-item .label { font-size: 9px; }
+    .pos-item .value { font-size: 15px; }
+
+    /* Config form */
+    .config-grid { grid-template-columns: 1fr 1fr; gap: 10px; padding: 12px; }
+    .form-group input { padding: 10px; font-size: 14px; }
+    .form-group label { font-size: 10px; }
+    .config-actions { padding: 0 12px 12px; }
+    .config-actions button { padding: 12px; font-size: 12px; }
+
+    /* Tabs */
+    .tab { padding: 10px 14px; font-size: 12px; }
+    .panel-header { padding: 10px 12px; }
+    .panel-title { font-size: 11px; }
+
+    /* Toast */
+    .toast { left: 12px; right: 12px; bottom: 12px; text-align: center; }
 }
