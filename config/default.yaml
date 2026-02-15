@@ -39,11 +39,11 @@ grids:
     trailing_cooldown_secs: 10.0
 
 pool:
-  initial_balance_usd: 1000.0
+  initial_balance_usd: 2000.0
 
 risk:
-  max_position_usd: 900.0
-  max_position_usd_per_pair: 350.0
+  max_position_usd: 1800.0
+  max_position_usd_per_pair: 700.0
   max_open_orders: 200
   stop_loss_pct: 5.0
   take_profit_pct: 3.0
@@ -51,7 +51,7 @@ risk:
 
 paper_trading:
   enabled: true
-  initial_balance_usd: 1000.0
+  initial_balance_usd: 2000.0
   initial_balance_base: 0.0
   simulated_fee_pct: 0.001
 
