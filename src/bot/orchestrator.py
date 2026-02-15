@@ -19,6 +19,9 @@ from ..db.repositories import (
 )
 from ..exchange.connector import CoinbaseConnector
 from ..exchange.paper_connector import PaperConnector
+from ..intelligence.fear_greed import FearGreedProvider
+from ..intelligence.lunarcrush import LunarCrushProvider
+from ..intelligence.rsi import RSIIndicator
 from ..orders.manager import OrderManager
 from ..position.tracker import MultiPairPositionTracker
 from ..risk.manager import RiskManager
@@ -60,6 +63,10 @@ class BotOrchestrator:
         self._pair_rotator: PairRotator | None = None
         self._momentum_rider: MomentumRider | None = None
         self._dip_sniper: DipSniper | None = None
+        self._rsi: RSIIndicator | None = None
+        self._lunarcrush: LunarCrushProvider | None = None
+        self._fear_greed: FearGreedProvider | None = None
+        self._intelligence_task: asyncio.Task | None = None
         self._shutdown_event = asyncio.Event()
         self._main_task: asyncio.Task | None = None
         self._last_live_prices: dict[str, float] = {}
@@ -141,8 +148,25 @@ class BotOrchestrator:
                 exchange=self._exchange,
                 position_tracker=self._position,
                 trend_filter=self._trend_filter,
+                lunarcrush=self._lunarcrush,
+                lunarcrush_config=self._config.lunarcrush if self._lunarcrush else None,
+                fear_greed=self._fear_greed,
+                fear_greed_config=self._config.fear_greed if self._fear_greed else None,
             )
             logger.info("momentum_rider_initialized")
+
+        # Intelligence layer
+        if self._config.rsi.enabled:
+            self._rsi = RSIIndicator(period=self._config.rsi.period)
+            logger.info("rsi_initialized", period=self._config.rsi.period)
+
+        if self._config.lunarcrush.enabled:
+            self._lunarcrush = LunarCrushProvider(self._config.lunarcrush)
+            logger.info("lunarcrush_initialized")
+
+        if self._config.fear_greed.enabled:
+            self._fear_greed = FearGreedProvider(cache_ttl_secs=300.0)
+            logger.info("fear_greed_initialized")
 
         # Dip Sniper strategy (shares pool with grid)
         if self._config.dip_sniper.enabled:
@@ -150,6 +174,8 @@ class BotOrchestrator:
                 config=self._config.dip_sniper,
                 exchange=self._exchange,
                 position_tracker=self._position,
+                rsi_indicator=self._rsi,
+                rsi_config=self._config.rsi if self._rsi else None,
             )
             logger.info("dip_sniper_initialized")
 
@@ -157,6 +183,8 @@ class BotOrchestrator:
         self._risk_mgr = RiskManager(
             self._config.risk, self._position, self._order_mgr,
             trend_filter=self._trend_filter,
+            fear_greed=self._fear_greed,
+            fear_greed_config=self._config.fear_greed if self._fear_greed else None,
         )
 
         # Fetch live prices for all pairs and auto-center grids
@@ -211,6 +239,12 @@ class BotOrchestrator:
         logger.info("bot_running", pairs=len(self._grid_engines))
         self._main_task = asyncio.create_task(self._run_loop())
 
+        # Background intelligence fetcher (LunarCrush + Fear & Greed)
+        if self._lunarcrush or self._fear_greed:
+            self._intelligence_task = asyncio.create_task(
+                self._intelligence_fetch_loop()
+            )
+
     async def _run_loop(self) -> None:
         snapshot_timer = 0.0
         is_paper = isinstance(self._exchange, PaperConnector)
@@ -244,6 +278,12 @@ class BotOrchestrator:
                     for sym, price in self._last_live_prices.items():
                         if price > 0:
                             self._trend_filter.record_price(sym, price)
+
+                # ── Record prices for RSI ──
+                if self._rsi:
+                    for sym, price in self._last_live_prices.items():
+                        if price > 0:
+                            self._rsi.record_price(sym, price)
 
                 # ── Per-pair logic ──
                 for grid_cfg in self._config.grids:
@@ -391,9 +431,34 @@ class BotOrchestrator:
                 return (symbol, float(data["data"]["amount"]))
         raise ValueError(f"Failed to fetch price for {symbol}")
 
+    async def _intelligence_fetch_loop(self) -> None:
+        """Background loop: fetch LunarCrush and Fear & Greed every 5 minutes."""
+        try:
+            while not self._shutdown_event.is_set():
+                if self._lunarcrush:
+                    await self._lunarcrush.fetch_scores(self.symbols)
+                if self._fear_greed:
+                    await self._fear_greed.fetch()
+                # Sleep 5 minutes, but check shutdown every 10 seconds
+                for _ in range(30):
+                    if self._shutdown_event.is_set():
+                        return
+                    await asyncio.sleep(10)
+        except asyncio.CancelledError:
+            pass
+        except Exception as e:
+            logger.warning("intelligence_fetch_loop_error", error=str(e))
+
     async def stop(self) -> None:
         self._status = BotStatus.STOPPING
         self._shutdown_event.set()
+
+        if self._intelligence_task:
+            self._intelligence_task.cancel()
+            try:
+                await self._intelligence_task
+            except asyncio.CancelledError:
+                pass
 
         if self._main_task:
             self._main_task.cancel()
@@ -495,3 +560,15 @@ class BotOrchestrator:
     @property
     def last_live_prices(self) -> dict[str, float]:
         return dict(self._last_live_prices)
+
+    @property
+    def rsi_indicator(self) -> RSIIndicator | None:
+        return self._rsi
+
+    @property
+    def lunarcrush(self) -> LunarCrushProvider | None:
+        return self._lunarcrush
+
+    @property
+    def fear_greed(self) -> FearGreedProvider | None:
+        return self._fear_greed

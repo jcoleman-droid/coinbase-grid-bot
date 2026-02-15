@@ -6,8 +6,9 @@ from dataclasses import dataclass
 
 import structlog
 
-from ..config.schema import DipSniperConfig
+from ..config.schema import DipSniperConfig, RSIConfig
 from ..exchange.base import ExchangeInterface
+from ..intelligence.rsi import RSIIndicator
 from ..position.tracker import MultiPairPositionTracker
 
 logger = structlog.get_logger()
@@ -31,10 +32,14 @@ class DipSniper:
         config: DipSniperConfig,
         exchange: ExchangeInterface,
         position_tracker: MultiPairPositionTracker,
+        rsi_indicator: RSIIndicator | None = None,
+        rsi_config: RSIConfig | None = None,
     ):
         self._config = config
         self._exchange = exchange
         self._position = position_tracker
+        self._rsi = rsi_indicator
+        self._rsi_config = rsi_config
         self._price_windows: dict[str, deque[float]] = {}
         self._active: dict[str, DipPosition] = {}
         self._cooldown_until: dict[str, float] = {}
@@ -60,6 +65,15 @@ class DipSniper:
             return
 
         if self._detect_dip(symbol):
+            # RSI gate: skip entry if overbought (dip likely to continue)
+            if self._rsi and self._rsi_config:
+                rsi_val = self._rsi.get_rsi(symbol)
+                if rsi_val is not None and rsi_val >= self._rsi_config.overbought:
+                    logger.info(
+                        "dip_blocked_overbought_rsi",
+                        symbol=symbol, rsi=rsi_val,
+                    )
+                    return
             await self._enter(symbol, current_price)
 
     def _detect_dip(self, symbol: str) -> bool:

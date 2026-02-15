@@ -2,8 +2,10 @@ from __future__ import annotations
 
 import structlog
 
-from ..config.schema import MomentumRiderConfig
+from ..config.schema import FearGreedConfig, LunarCrushConfig, MomentumRiderConfig
 from ..exchange.base import ExchangeInterface
+from ..intelligence.fear_greed import FearGreedProvider
+from ..intelligence.lunarcrush import LunarCrushProvider
 from ..position.tracker import MultiPairPositionTracker
 from .trend_filter import TrendDirection, TrendFilter
 
@@ -19,11 +21,19 @@ class MomentumRider:
         exchange: ExchangeInterface,
         position_tracker: MultiPairPositionTracker,
         trend_filter: TrendFilter,
+        lunarcrush: LunarCrushProvider | None = None,
+        lunarcrush_config: LunarCrushConfig | None = None,
+        fear_greed: FearGreedProvider | None = None,
+        fear_greed_config: FearGreedConfig | None = None,
     ):
         self._config = config
         self._exchange = exchange
         self._position = position_tracker
         self._trend_filter = trend_filter
+        self._lunarcrush = lunarcrush
+        self._lc_config = lunarcrush_config
+        self._fear_greed = fear_greed
+        self._fg_config = fear_greed_config
         self._up_confirms: dict[str, int] = {}
 
     async def evaluate(self, symbol: str, current_price: float) -> None:
@@ -51,7 +61,31 @@ class MomentumRider:
             and self._up_confirms.get(symbol, 0) >= self._config.min_trend_confirms
             and self._position.can_afford_buy(self._config.position_size_usd)
         ):
-            amount = self._config.position_size_usd / current_price
+            # Sentiment gate: skip if LunarCrush galaxy score too low
+            if self._lunarcrush and self._lc_config:
+                score = self._lunarcrush.get_score(symbol)
+                if score and score["galaxy_score"] < self._lc_config.min_galaxy_score:
+                    logger.info(
+                        "momentum_blocked_low_sentiment",
+                        symbol=symbol,
+                        galaxy_score=score["galaxy_score"],
+                        min_required=self._lc_config.min_galaxy_score,
+                    )
+                    return
+
+            # Fear & Greed gate: reduce size in extreme fear
+            size_usd = self._config.position_size_usd
+            if self._fear_greed and self._fg_config:
+                fg_val = self._fear_greed.get_index()
+                if fg_val is not None and fg_val <= self._fg_config.extreme_fear_threshold:
+                    size_usd *= (1 - self._fg_config.reduce_size_pct / 100)
+                    logger.info(
+                        "momentum_reduced_fear",
+                        symbol=symbol, fear_greed=fg_val,
+                        reduced_size=round(size_usd, 2),
+                    )
+
+            amount = size_usd / current_price
             await self._buy(symbol, amount, current_price)
 
     async def _buy(self, symbol: str, amount: float, price: float) -> None:

@@ -127,6 +127,22 @@ dip_sniper:
   stop_loss_pct: 2.0
   cooldown_secs: 30.0
 
+rsi:
+  enabled: true
+  period: 14
+  oversold: 30.0
+  overbought: 70.0
+
+lunarcrush:
+  enabled: true
+  min_galaxy_score: 40.0
+  cache_ttl_secs: 300.0
+
+fear_greed:
+  enabled: true
+  extreme_fear_threshold: 25
+  reduce_size_pct: 50.0
+
 dashboard:
   host: "0.0.0.0"
   port: 8080

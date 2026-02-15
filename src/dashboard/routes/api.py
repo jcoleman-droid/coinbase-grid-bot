@@ -245,3 +245,40 @@ async def get_strategies(request: Request):
         }
 
     return result
+
+
+@router.get("/intelligence")
+async def get_intelligence(request: Request):
+    bot = request.app.state.bot
+
+    # RSI values per symbol
+    rsi_data = {}
+    rsi = getattr(bot, "rsi_indicator", None)
+    if rsi:
+        for sym in (bot.symbols if hasattr(bot, "symbols") else []):
+            val = rsi.get_rsi(sym)
+            rsi_data[sym] = {
+                "rsi": val,
+                "data_points": rsi.data_points(sym),
+            }
+
+    # LunarCrush scores
+    lc_data = {}
+    lc = getattr(bot, "lunarcrush", None)
+    if lc:
+        lc_data = lc.get_all_scores()
+
+    # Fear & Greed Index
+    fg_data = {}
+    fg = getattr(bot, "fear_greed", None)
+    if fg:
+        fg_data = {
+            "value": fg.get_index(),
+            "classification": fg.classification,
+        }
+
+    return {
+        "rsi": rsi_data,
+        "lunarcrush": lc_data,
+        "fear_greed": fg_data,
+    }

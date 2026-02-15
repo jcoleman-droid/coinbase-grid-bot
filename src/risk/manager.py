@@ -2,7 +2,8 @@ from __future__ import annotations
 
 import structlog
 
-from ..config.schema import RiskConfig
+from ..config.schema import FearGreedConfig, RiskConfig
+from ..intelligence.fear_greed import FearGreedProvider
 from ..orders.manager import OrderManager
 from ..position.tracker import MultiPairPositionTracker
 from ..strategy.trend_filter import TrendFilter
@@ -17,11 +18,15 @@ class RiskManager:
         position_tracker: MultiPairPositionTracker,
         order_manager: OrderManager,
         trend_filter: TrendFilter | None = None,
+        fear_greed: FearGreedProvider | None = None,
+        fear_greed_config: FearGreedConfig | None = None,
     ):
         self._config = config
         self._position = position_tracker
         self._orders = order_manager
         self._trend_filter = trend_filter
+        self._fear_greed = fear_greed
+        self._fg_config = fear_greed_config
         self._peak_equity: float = 0.0
         self._is_halted: bool = False
         self._halted_pairs: set[str] = set()
@@ -46,6 +51,20 @@ class RiskManager:
             and not self._trend_filter.should_allow_buy(symbol)
         ):
             return False
+
+        # Block grid buys during extreme fear
+        if (
+            side == "buy"
+            and self._fear_greed is not None
+            and self._fg_config is not None
+        ):
+            fg_val = self._fear_greed.get_index()
+            if fg_val is not None and fg_val <= self._fg_config.extreme_fear_threshold:
+                logger.info(
+                    "risk_blocked_extreme_fear",
+                    symbol=symbol, fear_greed=fg_val,
+                )
+                return False
 
         if side == "buy":
             cost = amount * price if amount > 0 else 0

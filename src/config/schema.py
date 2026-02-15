@@ -109,6 +109,25 @@ class DipSniperConfig(BaseModel):
     cooldown_secs: float = Field(default=30.0, ge=0)
 
 
+class RSIConfig(BaseModel):
+    enabled: bool = True
+    period: int = Field(default=14, ge=2)
+    oversold: float = Field(default=30.0, ge=0, le=50)
+    overbought: float = Field(default=70.0, ge=50, le=100)
+
+
+class LunarCrushConfig(BaseModel):
+    enabled: bool = True
+    min_galaxy_score: float = Field(default=40.0, ge=0, le=100)
+    cache_ttl_secs: float = Field(default=300.0, ge=60)
+
+
+class FearGreedConfig(BaseModel):
+    enabled: bool = True
+    extreme_fear_threshold: int = Field(default=25, ge=0, le=50)
+    reduce_size_pct: float = Field(default=50.0, ge=0, le=100)
+
+
 class BotConfig(BaseModel):
     exchange: ExchangeConfig
     grids: list[GridConfig]
@@ -123,6 +142,9 @@ class BotConfig(BaseModel):
     strategy_allocation: StrategyAllocationConfig = StrategyAllocationConfig()
     momentum_rider: MomentumRiderConfig = MomentumRiderConfig()
     dip_sniper: DipSniperConfig = DipSniperConfig()
+    rsi: RSIConfig = RSIConfig()
+    lunarcrush: LunarCrushConfig = LunarCrushConfig()
+    fear_greed: FearGreedConfig = FearGreedConfig()
 
     @model_validator(mode="before")
     @classmethod
