@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import time
+
 from fastapi import APIRouter, Request
 
 from ...db.repositories import OrderRepository, PositionSnapshotRepository, TradeRepository
@@ -38,7 +40,7 @@ async def get_status(request: Request):
             if position
             else None
         ),
-        "total_equity": position.total_equity_usd if position else 0.0,
+        "total_equity": _aggregate_equity(bot),
         "pairs": pairs,
         "position": (
             {
@@ -185,3 +187,88 @@ async def get_defenses(request: Request):
         "position_stop_loss_cooldowns": stop_loss_data,
         "pair_rotation": rotation_data,
     }
+
+
+def _aggregate_equity(bot) -> float:
+    total = 0.0
+    position = bot.position_tracker
+    if position:
+        total += position.total_equity_usd
+    mr_pos = getattr(bot, "momentum_position_tracker", None)
+    if mr_pos:
+        total += mr_pos.total_equity_usd
+    ds_pos = getattr(bot, "dip_position_tracker", None)
+    if ds_pos:
+        total += ds_pos.total_equity_usd
+    return total
+
+
+@router.get("/strategies")
+async def get_strategies(request: Request):
+    bot = request.app.state.bot
+    prices = bot.last_live_prices if hasattr(bot, "last_live_prices") else {}
+
+    result = {"grid": None, "momentum_rider": None, "dip_sniper": None}
+
+    # Grid strategy
+    grid_pos = bot.position_tracker
+    if grid_pos:
+        result["grid"] = {
+            "pool": {
+                "available_usd": grid_pos.pool.available_usd,
+                "secured_profits": grid_pos.pool.secured_profits,
+                "total_fees": grid_pos.pool.total_fees,
+                "total_trade_count": grid_pos.pool.total_trade_count,
+            },
+            "total_equity": grid_pos.total_equity_usd,
+        }
+
+    # Momentum Rider
+    mr = getattr(bot, "momentum_rider", None)
+    mr_pos = getattr(bot, "momentum_position_tracker", None)
+    if mr and mr_pos:
+        active = mr.active_positions
+        result["momentum_rider"] = {
+            "pool": {
+                "available_usd": mr_pos.pool.available_usd,
+                "secured_profits": mr_pos.pool.secured_profits,
+                "total_fees": mr_pos.pool.total_fees,
+                "total_trade_count": mr_pos.pool.total_trade_count,
+            },
+            "total_equity": mr_pos.total_equity_usd,
+            "active_positions": {
+                sym: {
+                    "base_balance": bal,
+                    "current_price": prices.get(sym, 0.0),
+                }
+                for sym, bal in active.items()
+            },
+        }
+
+    # Dip Sniper
+    ds = getattr(bot, "dip_sniper", None)
+    ds_pos = getattr(bot, "dip_position_tracker", None)
+    if ds and ds_pos:
+        active = ds.active_positions
+        result["dip_sniper"] = {
+            "pool": {
+                "available_usd": ds_pos.pool.available_usd,
+                "secured_profits": ds_pos.pool.secured_profits,
+                "total_fees": ds_pos.pool.total_fees,
+                "total_trade_count": ds_pos.pool.total_trade_count,
+            },
+            "total_equity": ds_pos.total_equity_usd,
+            "active_positions": {
+                sym: {
+                    "entry_price": pos.entry_price,
+                    "amount": pos.amount,
+                    "take_profit": pos.take_profit_price,
+                    "stop_loss": pos.stop_loss_price,
+                    "current_price": prices.get(sym, 0.0),
+                    "hold_secs": round(time.time() - pos.entry_time, 1),
+                }
+                for sym, pos in active.items()
+            },
+        }
+
+    return result

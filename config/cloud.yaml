@@ -108,6 +108,25 @@ pair_rotation:
   pause_threshold: -1.0
   min_trades_before_eval: 5
 
+strategy_allocation:
+  grid_pct: 60.0
+  momentum_pct: 25.0
+  dip_sniper_pct: 15.0
+
+momentum_rider:
+  enabled: true
+  position_size_usd: 40.0
+  min_trend_confirms: 3
+
+dip_sniper:
+  enabled: true
+  position_size_usd: 25.0
+  lookback_count: 10
+  dip_threshold_pct: -3.0
+  take_profit_pct: 1.5
+  stop_loss_pct: 2.0
+  cooldown_secs: 30.0
+
 dashboard:
   host: "0.0.0.0"
   port: 8080

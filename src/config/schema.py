@@ -80,6 +80,35 @@ class PairRotationConfig(BaseModel):
     min_trades_before_eval: int = 5
 
 
+class StrategyAllocationConfig(BaseModel):
+    grid_pct: float = Field(default=60.0, ge=0, le=100)
+    momentum_pct: float = Field(default=25.0, ge=0, le=100)
+    dip_sniper_pct: float = Field(default=15.0, ge=0, le=100)
+
+    @model_validator(mode="after")
+    def check_total(self) -> StrategyAllocationConfig:
+        total = self.grid_pct + self.momentum_pct + self.dip_sniper_pct
+        if abs(total - 100.0) > 0.01:
+            raise ValueError(f"Strategy allocations must sum to 100%, got {total}%")
+        return self
+
+
+class MomentumRiderConfig(BaseModel):
+    enabled: bool = False
+    position_size_usd: float = Field(default=40.0, gt=0)
+    min_trend_confirms: int = Field(default=3, ge=1)
+
+
+class DipSniperConfig(BaseModel):
+    enabled: bool = False
+    position_size_usd: float = Field(default=25.0, gt=0)
+    lookback_count: int = Field(default=10, ge=3)
+    dip_threshold_pct: float = Field(default=-3.0, lt=0)
+    take_profit_pct: float = Field(default=1.5, gt=0)
+    stop_loss_pct: float = Field(default=2.0, gt=0)
+    cooldown_secs: float = Field(default=30.0, ge=0)
+
+
 class BotConfig(BaseModel):
     exchange: ExchangeConfig
     grids: list[GridConfig]
@@ -91,6 +120,9 @@ class BotConfig(BaseModel):
     trend_filter: TrendFilterConfig = TrendFilterConfig()
     position_stop_loss: PositionStopLossConfig = PositionStopLossConfig()
     pair_rotation: PairRotationConfig = PairRotationConfig()
+    strategy_allocation: StrategyAllocationConfig = StrategyAllocationConfig()
+    momentum_rider: MomentumRiderConfig = MomentumRiderConfig()
+    dip_sniper: DipSniperConfig = DipSniperConfig()
 
     @model_validator(mode="before")
     @classmethod
