@@ -73,19 +73,7 @@ class MomentumRider:
                     )
                     return
 
-            # Fear & Greed gate: reduce size in extreme fear
-            size_usd = self._config.position_size_usd
-            if self._fear_greed and self._fg_config:
-                fg_val = self._fear_greed.get_index()
-                if fg_val is not None and fg_val <= self._fg_config.extreme_fear_threshold:
-                    size_usd *= (1 - self._fg_config.reduce_size_pct / 100)
-                    logger.info(
-                        "momentum_reduced_fear",
-                        symbol=symbol, fear_greed=fg_val,
-                        reduced_size=round(size_usd, 2),
-                    )
-
-            amount = size_usd / current_price
+            amount = self._config.position_size_usd / current_price
             await self._buy(symbol, amount, current_price)
 
     async def _buy(self, symbol: str, amount: float, price: float) -> None:

@@ -52,20 +52,6 @@ class RiskManager:
         ):
             return False
 
-        # Block grid buys during extreme fear
-        if (
-            side == "buy"
-            and self._fear_greed is not None
-            and self._fg_config is not None
-        ):
-            fg_val = self._fear_greed.get_index()
-            if fg_val is not None and fg_val <= self._fg_config.extreme_fear_threshold:
-                logger.info(
-                    "risk_blocked_extreme_fear",
-                    symbol=symbol, fear_greed=fg_val,
-                )
-                return False
-
         if side == "buy":
             cost = amount * price if amount > 0 else 0
             if cost > 0 and not self._position.can_afford_buy(cost):
