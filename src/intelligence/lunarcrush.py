@@ -12,7 +12,7 @@ logger = structlog.get_logger()
 # Map trading pair symbols to CoinGecko IDs
 SYMBOL_MAP: dict[str, str] = {
     "BONK/USD": "bonk",
-    "WIF/USD": "dogwifhat",
+    "WIF/USD": "dogwifcoin",
     "PEPE/USD": "pepe",
     "SHIB/USD": "shiba-inu",
     "SUI/USD": "sui",
