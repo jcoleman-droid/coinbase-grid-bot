@@ -128,6 +128,28 @@ class FearGreedConfig(BaseModel):
     reduce_size_pct: float = Field(default=50.0, ge=0, le=100)
 
 
+class VolumeTrackerConfig(BaseModel):
+    enabled: bool = True
+    spike_multiplier: float = Field(default=2.0, gt=1.0)
+    lookback: int = Field(default=20, ge=3)
+
+
+class SocialTrendingConfig(BaseModel):
+    enabled: bool = True
+    cache_ttl_secs: float = Field(default=300.0, ge=60)
+
+
+class WhaleDetectorConfig(BaseModel):
+    enabled: bool = True
+    velocity_threshold_pct: float = Field(default=0.5, gt=0)
+
+
+class BTCDominanceConfig(BaseModel):
+    enabled: bool = True
+    alt_season_threshold: float = Field(default=50.0, ge=30, le=70)
+    cache_ttl_secs: float = Field(default=300.0, ge=60)
+
+
 class BotConfig(BaseModel):
     exchange: ExchangeConfig
     grids: list[GridConfig]
@@ -145,6 +167,10 @@ class BotConfig(BaseModel):
     rsi: RSIConfig = RSIConfig()
     lunarcrush: LunarCrushConfig = LunarCrushConfig()
     fear_greed: FearGreedConfig = FearGreedConfig()
+    volume_tracker: VolumeTrackerConfig = VolumeTrackerConfig()
+    social_trending: SocialTrendingConfig = SocialTrendingConfig()
+    whale_detector: WhaleDetectorConfig = WhaleDetectorConfig()
+    btc_dominance: BTCDominanceConfig = BTCDominanceConfig()
 
     @model_validator(mode="before")
     @classmethod

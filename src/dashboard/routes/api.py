@@ -277,8 +277,43 @@ async def get_intelligence(request: Request):
             "classification": fg.classification,
         }
 
+    # Volume Spikes
+    vol_data = {}
+    vt = getattr(bot, "volume_tracker", None)
+    if vt:
+        vol_data = vt.get_all()
+
+    # Social Trending
+    trending_data = {}
+    st = getattr(bot, "social_trending", None)
+    if st:
+        trending_data = {
+            "our_coins_trending": st.get_our_trending(),
+            "top_trending": st.get_trending()[:7],
+        }
+
+    # Whale Detection
+    whale_data = {}
+    wd = getattr(bot, "whale_detector", None)
+    if wd:
+        whale_data = wd.get_all()
+
+    # BTC Dominance
+    btc_data = {}
+    bd = getattr(bot, "btc_dominance", None)
+    if bd:
+        btc_data = {
+            "dominance_pct": bd.get_dominance(),
+            "alt_season": bd.is_alt_season(),
+            "total_market_cap": bd.total_market_cap,
+        }
+
     return {
         "rsi": rsi_data,
         "lunarcrush": lc_data,
         "fear_greed": fg_data,
+        "volume_spikes": vol_data,
+        "social_trending": trending_data,
+        "whale_detection": whale_data,
+        "btc_dominance": btc_data,
     }

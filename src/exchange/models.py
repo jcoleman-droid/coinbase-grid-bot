@@ -9,6 +9,7 @@ class Ticker:
     last: float
     bid: float = 0.0
     ask: float = 0.0
+    volume: float = 0.0
     timestamp: int = 0
 
     @classmethod
@@ -18,6 +19,7 @@ class Ticker:
             last=float(raw.get("last", 0)),
             bid=float(raw.get("bid") or 0),
             ask=float(raw.get("ask") or 0),
+            volume=float(raw.get("quoteVolume") or 0),
             timestamp=int(raw.get("timestamp") or 0),
         )
 

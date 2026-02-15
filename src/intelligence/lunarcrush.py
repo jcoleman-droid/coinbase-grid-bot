@@ -88,6 +88,7 @@ class LunarCrushProvider:
                                 "galaxy_score": round(score, 1),
                                 "sentiment": round(score, 1),
                                 "price_change_24h": round(pct_24h, 2),
+                                "total_volume": coin.get("total_volume") or 0,
                                 "market_cap_rank": coin.get("market_cap_rank"),
                                 "source": "coingecko",
                             }

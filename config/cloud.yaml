@@ -143,6 +143,24 @@ fear_greed:
   extreme_fear_threshold: 25
   reduce_size_pct: 50.0
 
+volume_tracker:
+  enabled: true
+  spike_multiplier: 2.0
+  lookback: 20
+
+social_trending:
+  enabled: true
+  cache_ttl_secs: 300.0
+
+whale_detector:
+  enabled: true
+  velocity_threshold_pct: 0.5
+
+btc_dominance:
+  enabled: true
+  alt_season_threshold: 50.0
+  cache_ttl_secs: 300.0
+
 dashboard:
   host: "0.0.0.0"
   port: 8080

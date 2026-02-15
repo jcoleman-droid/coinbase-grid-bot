@@ -19,9 +19,13 @@ from ..db.repositories import (
 )
 from ..exchange.connector import CoinbaseConnector
 from ..exchange.paper_connector import PaperConnector
+from ..intelligence.btc_dominance import BTCDominanceProvider
 from ..intelligence.fear_greed import FearGreedProvider
 from ..intelligence.lunarcrush import LunarCrushProvider
 from ..intelligence.rsi import RSIIndicator
+from ..intelligence.social_trending import SocialTrending
+from ..intelligence.volume_tracker import VolumeTracker
+from ..intelligence.whale_detector import WhaleDetector
 from ..orders.manager import OrderManager
 from ..position.tracker import MultiPairPositionTracker
 from ..risk.manager import RiskManager
@@ -66,6 +70,10 @@ class BotOrchestrator:
         self._rsi: RSIIndicator | None = None
         self._lunarcrush: LunarCrushProvider | None = None
         self._fear_greed: FearGreedProvider | None = None
+        self._volume_tracker: VolumeTracker | None = None
+        self._social_trending: SocialTrending | None = None
+        self._whale_detector: WhaleDetector | None = None
+        self._btc_dominance: BTCDominanceProvider | None = None
         self._intelligence_task: asyncio.Task | None = None
         self._shutdown_event = asyncio.Event()
         self._main_task: asyncio.Task | None = None
@@ -168,6 +176,32 @@ class BotOrchestrator:
             self._fear_greed = FearGreedProvider(cache_ttl_secs=300.0)
             logger.info("fear_greed_initialized")
 
+        if self._config.volume_tracker.enabled:
+            self._volume_tracker = VolumeTracker(
+                spike_multiplier=self._config.volume_tracker.spike_multiplier,
+                lookback=self._config.volume_tracker.lookback,
+            )
+            logger.info("volume_tracker_initialized")
+
+        if self._config.social_trending.enabled:
+            self._social_trending = SocialTrending(
+                cache_ttl_secs=self._config.social_trending.cache_ttl_secs,
+            )
+            logger.info("social_trending_initialized")
+
+        if self._config.whale_detector.enabled:
+            self._whale_detector = WhaleDetector(
+                velocity_threshold_pct=self._config.whale_detector.velocity_threshold_pct,
+            )
+            logger.info("whale_detector_initialized")
+
+        if self._config.btc_dominance.enabled:
+            self._btc_dominance = BTCDominanceProvider(
+                alt_season_threshold=self._config.btc_dominance.alt_season_threshold,
+                cache_ttl_secs=self._config.btc_dominance.cache_ttl_secs,
+            )
+            logger.info("btc_dominance_initialized")
+
         # Dip Sniper strategy (shares pool with grid)
         if self._config.dip_sniper.enabled:
             self._dip_sniper = DipSniper(
@@ -239,8 +273,8 @@ class BotOrchestrator:
         logger.info("bot_running", pairs=len(self._grid_engines))
         self._main_task = asyncio.create_task(self._run_loop())
 
-        # Background intelligence fetcher (LunarCrush + Fear & Greed)
-        if self._lunarcrush or self._fear_greed:
+        # Background intelligence fetcher
+        if any([self._lunarcrush, self._fear_greed, self._social_trending, self._btc_dominance]):
             self._intelligence_task = asyncio.create_task(
                 self._intelligence_fetch_loop()
             )
@@ -284,6 +318,12 @@ class BotOrchestrator:
                     for sym, price in self._last_live_prices.items():
                         if price > 0:
                             self._rsi.record_price(sym, price)
+
+                # ── Record prices for whale detection ──
+                if self._whale_detector:
+                    for sym, price in self._last_live_prices.items():
+                        if price > 0:
+                            self._whale_detector.record_price(sym, price)
 
                 # ── Per-pair logic ──
                 for grid_cfg in self._config.grids:
@@ -432,13 +472,23 @@ class BotOrchestrator:
         raise ValueError(f"Failed to fetch price for {symbol}")
 
     async def _intelligence_fetch_loop(self) -> None:
-        """Background loop: fetch LunarCrush and Fear & Greed every 5 minutes."""
+        """Background loop: fetch external intelligence every 5 minutes."""
         try:
             while not self._shutdown_event.is_set():
                 if self._lunarcrush:
                     await self._lunarcrush.fetch_scores(self.symbols)
+                    # Feed volume data to tracker
+                    if self._volume_tracker:
+                        for sym, score in self._lunarcrush.get_all_scores().items():
+                            vol = score.get("total_volume", 0)
+                            if vol > 0:
+                                self._volume_tracker.record_volume(sym, vol)
                 if self._fear_greed:
                     await self._fear_greed.fetch()
+                if self._social_trending:
+                    await self._social_trending.fetch()
+                if self._btc_dominance:
+                    await self._btc_dominance.fetch()
                 # Sleep 5 minutes, but check shutdown every 10 seconds
                 for _ in range(30):
                     if self._shutdown_event.is_set():
@@ -572,3 +622,19 @@ class BotOrchestrator:
     @property
     def fear_greed(self) -> FearGreedProvider | None:
         return self._fear_greed
+
+    @property
+    def volume_tracker(self) -> VolumeTracker | None:
+        return self._volume_tracker
+
+    @property
+    def social_trending(self) -> SocialTrending | None:
+        return self._social_trending
+
+    @property
+    def whale_detector(self) -> WhaleDetector | None:
+        return self._whale_detector
+
+    @property
+    def btc_dominance(self) -> BTCDominanceProvider | None:
+        return self._btc_dominance
