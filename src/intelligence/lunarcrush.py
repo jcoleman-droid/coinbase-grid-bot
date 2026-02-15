@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import asyncio
 import time
 
 import aiohttp
@@ -26,13 +25,18 @@ SYMBOL_MAP: dict[str, str] = {
     "ADA/USD": "cardano",
 }
 
+REVERSE_MAP: dict[str, str] = {v: k for k, v in SYMBOL_MAP.items()}
+
 
 class LunarCrushProvider:
-    """Fetches sentiment scores from CoinGecko free API.
+    """Fetches market sentiment from CoinGecko free API (single batch call).
 
-    Uses sentiment_votes_up_percentage (0-100) as the primary score.
-    Caches results with a configurable TTL to avoid rate limits.
+    Uses a normalized score 0-100 based on 24h price change and market activity.
+    Coins with strong positive momentum score high; dumping coins score low.
+    Caches results with a configurable TTL.
     """
+
+    MARKETS_URL = "https://api.coingecko.com/api/v3/coins/markets"
 
     def __init__(self, config: LunarCrushConfig):
         self._config = config
@@ -44,50 +48,53 @@ class LunarCrushProvider:
         if now - self._cache_time < self._config.cache_ttl_secs and self._cache:
             return
 
+        coin_ids = []
+        for sym in symbols:
+            cid = SYMBOL_MAP.get(sym)
+            if cid:
+                coin_ids.append(cid)
+
+        if not coin_ids:
+            return
+
         new_cache: dict[str, dict] = {}
         try:
+            params = {
+                "vs_currency": "usd",
+                "ids": ",".join(coin_ids),
+                "order": "market_cap_desc",
+                "per_page": str(len(coin_ids)),
+                "page": "1",
+                "sparkline": "false",
+                "price_change_percentage": "24h",
+            }
             async with aiohttp.ClientSession() as session:
-                for sym in symbols:
-                    coin_id = SYMBOL_MAP.get(sym)
-                    if not coin_id:
-                        continue
-                    try:
-                        url = (
-                            f"https://api.coingecko.com/api/v3/coins/{coin_id}"
-                            "?localization=false&tickers=false&market_data=false"
-                            "&community_data=true&developer_data=false&sparkline=false"
-                        )
-                        async with session.get(
-                            url, timeout=aiohttp.ClientTimeout(total=10)
-                        ) as resp:
-                            if resp.status == 200:
-                                data = await resp.json()
-                                sentiment_up = data.get(
-                                    "sentiment_votes_up_percentage", 0
-                                ) or 0
-                                new_cache[sym] = {
-                                    "galaxy_score": sentiment_up,
-                                    "sentiment": sentiment_up,
-                                    "sentiment_down": data.get(
-                                        "sentiment_votes_down_percentage", 0
-                                    ) or 0,
-                                    "source": "coingecko",
-                                }
-                            elif resp.status == 429:
-                                logger.debug("coingecko_rate_limited")
-                                break
-                            else:
-                                logger.debug(
-                                    "coingecko_fetch_status",
-                                    symbol=sym, status=resp.status,
-                                )
-                        # Small delay between calls to respect rate limits
-                        await asyncio.sleep(1.5)
-                    except Exception as e:
-                        logger.debug(
-                            "coingecko_fetch_one_failed",
-                            symbol=sym, error=str(e),
-                        )
+                async with session.get(
+                    self.MARKETS_URL,
+                    params=params,
+                    timeout=aiohttp.ClientTimeout(total=15),
+                ) as resp:
+                    if resp.status == 200:
+                        data = await resp.json()
+                        for coin in data:
+                            sym = REVERSE_MAP.get(coin["id"])
+                            if not sym:
+                                continue
+                            pct_24h = coin.get("price_change_percentage_24h") or 0
+                            # Normalize to 0-100 scale:
+                            # -10% or worse = 0, +10% or better = 100, 0% = 50
+                            score = max(0.0, min(100.0, 50.0 + pct_24h * 5))
+                            new_cache[sym] = {
+                                "galaxy_score": round(score, 1),
+                                "sentiment": round(score, 1),
+                                "price_change_24h": round(pct_24h, 2),
+                                "market_cap_rank": coin.get("market_cap_rank"),
+                                "source": "coingecko",
+                            }
+                    elif resp.status == 429:
+                        logger.debug("coingecko_rate_limited")
+                    else:
+                        logger.debug("coingecko_fetch_status", status=resp.status)
 
             if new_cache:
                 self._cache = new_cache
@@ -96,7 +103,7 @@ class LunarCrushProvider:
                     "sentiment_updated",
                     coins=len(new_cache),
                     scores={
-                        s: round(d["galaxy_score"], 1)
+                        s: d["galaxy_score"]
                         for s, d in new_cache.items()
                     },
                 )
