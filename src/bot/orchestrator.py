@@ -59,9 +59,7 @@ class BotOrchestrator:
         self._stop_loss: PositionStopLoss | None = None
         self._pair_rotator: PairRotator | None = None
         self._momentum_rider: MomentumRider | None = None
-        self._momentum_position: MultiPairPositionTracker | None = None
         self._dip_sniper: DipSniper | None = None
-        self._dip_position: MultiPairPositionTracker | None = None
         self._shutdown_event = asyncio.Event()
         self._main_task: asyncio.Task | None = None
         self._last_live_prices: dict[str, float] = {}
@@ -103,41 +101,18 @@ class BotOrchestrator:
         for grid_cfg in self._config.grids:
             await self._order_mgr.reconcile_with_exchange(grid_cfg.symbol)
 
-        # Capital allocation across strategies
+        # Shared pool — all strategies draw from the same $1000
         symbols = self.symbols
-        total_usd = (
+        initial_usd = (
             self._config.pool.initial_balance_usd
             if self._config.paper_trading.enabled
             else 0.0
         )
-        alloc = self._config.strategy_allocation
-        grid_capital = total_usd * alloc.grid_pct / 100
-        momentum_capital = total_usd * alloc.momentum_pct / 100
-        dip_capital = total_usd * alloc.dip_sniper_pct / 100
-        logger.info(
-            "capital_allocation",
-            grid=grid_capital, momentum=momentum_capital, dip=dip_capital,
-        )
-
-        # Grid position tracker (primary)
         self._position = MultiPairPositionTracker(
             symbols, self._exchange, trade_repo, snapshot_repo,
-            initial_usd=grid_capital,
+            initial_usd=initial_usd,
         )
-
-        # Momentum Rider tracker
-        if self._config.momentum_rider.enabled:
-            self._momentum_position = MultiPairPositionTracker(
-                symbols, self._exchange, trade_repo, snapshot_repo,
-                initial_usd=momentum_capital,
-            )
-
-        # Dip Sniper tracker
-        if self._config.dip_sniper.enabled:
-            self._dip_position = MultiPairPositionTracker(
-                symbols, self._exchange, trade_repo, snapshot_repo,
-                initial_usd=dip_capital,
-            )
+        logger.info("shared_pool_initialized", capital=initial_usd)
 
         # Defensive features
         if self._config.trend_filter.enabled:
@@ -159,24 +134,24 @@ class BotOrchestrator:
                 min_trades_before_eval=self._config.pair_rotation.min_trades_before_eval,
             )
 
-        # Momentum Rider strategy
+        # Momentum Rider strategy (shares pool with grid)
         if self._config.momentum_rider.enabled and self._trend_filter:
             self._momentum_rider = MomentumRider(
                 config=self._config.momentum_rider,
                 exchange=self._exchange,
-                position_tracker=self._momentum_position,
+                position_tracker=self._position,
                 trend_filter=self._trend_filter,
             )
-            logger.info("momentum_rider_initialized", capital=momentum_capital)
+            logger.info("momentum_rider_initialized")
 
-        # Dip Sniper strategy
+        # Dip Sniper strategy (shares pool with grid)
         if self._config.dip_sniper.enabled:
             self._dip_sniper = DipSniper(
                 config=self._config.dip_sniper,
                 exchange=self._exchange,
-                position_tracker=self._dip_position,
+                position_tracker=self._position,
             )
-            logger.info("dip_sniper_initialized", capital=dip_capital)
+            logger.info("dip_sniper_initialized")
 
         # Risk manager (shared for grid strategy)
         self._risk_mgr = RiskManager(
@@ -368,10 +343,6 @@ class BotOrchestrator:
 
                 # ── Global checks ──
                 total_equity = self._position.total_equity_usd if self._position else 0
-                if self._momentum_position:
-                    total_equity += self._momentum_position.total_equity_usd
-                if self._dip_position:
-                    total_equity += self._dip_position.total_equity_usd
                 if self._risk_mgr.check_drawdown(total_equity):
                     await self._emergency_shutdown("drawdown_limit")
                     return
@@ -520,14 +491,6 @@ class BotOrchestrator:
     @property
     def dip_sniper(self) -> DipSniper | None:
         return self._dip_sniper
-
-    @property
-    def momentum_position_tracker(self) -> MultiPairPositionTracker | None:
-        return self._momentum_position
-
-    @property
-    def dip_position_tracker(self) -> MultiPairPositionTracker | None:
-        return self._dip_position
 
     @property
     def last_live_prices(self) -> dict[str, float]:
