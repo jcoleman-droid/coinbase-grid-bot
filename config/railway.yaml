@@ -4,68 +4,35 @@ exchange:
   rate_limit_ms: 100
 
 grids:
-  # ── 6 most active pairs, $35 orders, tight 7% ranges ──
-  - symbol: "BONK/USD"
-    lower_price: 0.0000061
-    upper_price: 0.0000065
+  # ── 3 highest-volume pairs, $60 orders, 10 levels, 7% ranges ──
+  - symbol: "PEPE/USD"
+    lower_price: 0.00000432
+    upper_price: 0.00000463
     num_levels: 10
     spacing: arithmetic
-    order_size_usd: 35.0
+    order_size_usd: 60.0
+    trailing_enabled: true
+    trailing_trigger_pct: 50.0
+    trailing_rebalance_pct: 30.0
+    trailing_cooldown_secs: 10.0
+
+  - symbol: "BONK/USD"
+    lower_price: 0.00000616
+    upper_price: 0.0000066
+    num_levels: 10
+    spacing: arithmetic
+    order_size_usd: 60.0
     trailing_enabled: true
     trailing_trigger_pct: 50.0
     trailing_rebalance_pct: 30.0
     trailing_cooldown_secs: 10.0
 
   - symbol: "WIF/USD"
-    lower_price: 0.215
-    upper_price: 0.231
+    lower_price: 0.217
+    upper_price: 0.233
     num_levels: 10
     spacing: arithmetic
-    order_size_usd: 35.0
-    trailing_enabled: true
-    trailing_trigger_pct: 50.0
-    trailing_rebalance_pct: 30.0
-    trailing_cooldown_secs: 10.0
-
-  - symbol: "PEPE/USD"
-    lower_price: 0.00000366
-    upper_price: 0.00000392
-    num_levels: 10
-    spacing: arithmetic
-    order_size_usd: 35.0
-    trailing_enabled: true
-    trailing_trigger_pct: 50.0
-    trailing_rebalance_pct: 30.0
-    trailing_cooldown_secs: 10.0
-
-  - symbol: "SHIB/USD"
-    lower_price: 0.00000615
-    upper_price: 0.00000659
-    num_levels: 10
-    spacing: arithmetic
-    order_size_usd: 35.0
-    trailing_enabled: true
-    trailing_trigger_pct: 50.0
-    trailing_rebalance_pct: 30.0
-    trailing_cooldown_secs: 10.0
-
-  - symbol: "SUI/USD"
-    lower_price: 0.927
-    upper_price: 0.994
-    num_levels: 10
-    spacing: arithmetic
-    order_size_usd: 35.0
-    trailing_enabled: true
-    trailing_trigger_pct: 50.0
-    trailing_rebalance_pct: 30.0
-    trailing_cooldown_secs: 10.0
-
-  - symbol: "INJ/USD"
-    lower_price: 3.02
-    upper_price: 3.23
-    num_levels: 10
-    spacing: arithmetic
-    order_size_usd: 35.0
+    order_size_usd: 60.0
     trailing_enabled: true
     trailing_trigger_pct: 50.0
     trailing_rebalance_pct: 30.0
@@ -76,7 +43,7 @@ pool:
 
 risk:
   max_position_usd: 900.0
-  max_position_usd_per_pair: 200.0
+  max_position_usd_per_pair: 350.0
   max_open_orders: 200
   stop_loss_pct: 5.0
   take_profit_pct: 3.0
@@ -105,8 +72,8 @@ position_stop_loss:
 pair_rotation:
   enabled: true
   evaluation_interval_secs: 1800.0
-  pause_threshold: -1.0
-  min_trades_before_eval: 5
+  pause_threshold: -5.0
+  min_trades_before_eval: 10
 
 strategy_allocation:
   grid_pct: 60.0
@@ -115,12 +82,12 @@ strategy_allocation:
 
 momentum_rider:
   enabled: true
-  position_size_usd: 40.0
+  position_size_usd: 60.0
   min_trend_confirms: 3
 
 dip_sniper:
   enabled: true
-  position_size_usd: 25.0
+  position_size_usd: 40.0
   lookback_count: 10
   dip_threshold_pct: -3.0
   take_profit_pct: 1.5
