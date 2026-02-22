@@ -4,50 +4,50 @@ exchange:
   rate_limit_ms: 100
 
 grids:
-  # ── 3 highest-volume pairs, $60 orders, 10 levels, 7% ranges ──
+  # ── 25% ranges, 8 levels (~3.1% per level), $100 orders ──
   - symbol: "PEPE/USD"
-    lower_price: 0.00000432
-    upper_price: 0.00000463
-    num_levels: 10
+    lower_price: 0.0000035
+    upper_price: 0.0000044
+    num_levels: 8
     spacing: arithmetic
-    order_size_usd: 60.0
+    order_size_usd: 100.0
     trailing_enabled: true
-    trailing_trigger_pct: 50.0
-    trailing_rebalance_pct: 30.0
-    trailing_cooldown_secs: 10.0
+    trailing_trigger_pct: 85.0
+    trailing_rebalance_pct: 50.0
+    trailing_cooldown_secs: 600.0
 
   - symbol: "BONK/USD"
-    lower_price: 0.00000616
-    upper_price: 0.0000066
-    num_levels: 10
+    lower_price: 0.0000053
+    upper_price: 0.0000067
+    num_levels: 8
     spacing: arithmetic
-    order_size_usd: 60.0
+    order_size_usd: 100.0
     trailing_enabled: true
-    trailing_trigger_pct: 50.0
-    trailing_rebalance_pct: 30.0
-    trailing_cooldown_secs: 10.0
+    trailing_trigger_pct: 85.0
+    trailing_rebalance_pct: 50.0
+    trailing_cooldown_secs: 600.0
 
   - symbol: "WIF/USD"
-    lower_price: 0.217
-    upper_price: 0.233
-    num_levels: 10
+    lower_price: 0.19
+    upper_price: 0.24
+    num_levels: 8
     spacing: arithmetic
-    order_size_usd: 60.0
+    order_size_usd: 100.0
     trailing_enabled: true
-    trailing_trigger_pct: 50.0
-    trailing_rebalance_pct: 30.0
-    trailing_cooldown_secs: 10.0
+    trailing_trigger_pct: 85.0
+    trailing_rebalance_pct: 50.0
+    trailing_cooldown_secs: 600.0
 
 pool:
   initial_balance_usd: 2000.0
 
 risk:
   max_position_usd: 1800.0
-  max_position_usd_per_pair: 700.0
+  max_position_usd_per_pair: 800.0
   max_open_orders: 200
-  stop_loss_pct: 5.0
-  take_profit_pct: 3.0
-  max_drawdown_pct: 10.0
+  stop_loss_pct: 8.0
+  take_profit_pct: 5.0
+  max_drawdown_pct: 15.0
 
 paper_trading:
   enabled: true
@@ -70,7 +70,7 @@ position_stop_loss:
   cooldown_secs: 300.0
 
 pair_rotation:
-  enabled: true
+  enabled: false
   evaluation_interval_secs: 1800.0
   pause_threshold: -5.0
   min_trades_before_eval: 10
@@ -81,12 +81,12 @@ strategy_allocation:
   dip_sniper_pct: 15.0
 
 momentum_rider:
-  enabled: true
+  enabled: false
   position_size_usd: 60.0
   min_trend_confirms: 3
 
 dip_sniper:
-  enabled: true
+  enabled: false
   position_size_usd: 40.0
   lookback_count: 10
   dip_threshold_pct: -3.0
