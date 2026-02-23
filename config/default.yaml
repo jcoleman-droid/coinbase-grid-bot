@@ -128,6 +128,23 @@ btc_dominance:
   alt_season_threshold: 50.0
   cache_ttl_secs: 300.0
 
+dynamic_pairs:
+  enabled: true
+  evaluation_interval_secs: 10800
+  swap_score_threshold: 1.5
+  range_pct: 25.0
+  candidate_pool:
+    - "PEPE/USD"
+    - "DOGE/USD"
+    - "WIF/USD"
+    - "SHIB/USD"
+    - "SOL/USD"
+    - "ADA/USD"
+    - "XRP/USD"
+    - "SUI/USD"
+    - "LINK/USD"
+    - "AVAX/USD"
+
 dashboard:
   host: "127.0.0.1"
   port: 8080

@@ -23,6 +23,8 @@ SYMBOL_MAP: dict[str, str] = {
     "DOGE/USD": "dogecoin",
     "XRP/USD": "ripple",
     "ADA/USD": "cardano",
+    "LINK/USD": "chainlink",
+    "AVAX/USD": "avalanche-2",
 }
 
 REVERSE_MAP: dict[str, str] = {v: k for k, v in SYMBOL_MAP.items()}
@@ -90,6 +92,7 @@ class LunarCrushProvider:
                                 "price_change_24h": round(pct_24h, 2),
                                 "total_volume": coin.get("total_volume") or 0,
                                 "market_cap_rank": coin.get("market_cap_rank"),
+                                "current_price": coin.get("current_price") or 0,
                                 "source": "coingecko",
                             }
                     elif resp.status == 429:

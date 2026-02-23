@@ -308,6 +308,23 @@ async def get_intelligence(request: Request):
             "total_market_cap": bd.total_market_cap,
         }
 
+    # Dynamic Pair Selector
+    dynamic_pairs_data = {}
+    dp = getattr(bot, "dynamic_selector", None)
+    if dp:
+        active_symbols = set(bot.symbols if hasattr(bot, "symbols") else [])
+        scores = dp.get_scores()
+        dynamic_pairs_data = {
+            "scores": {
+                sym: {
+                    "score": score,
+                    "active": sym in active_symbols,
+                }
+                for sym, score in sorted(scores.items(), key=lambda x: -x[1])
+            },
+            "last_swap": dp.last_swap,
+        }
+
     return {
         "rsi": rsi_data,
         "lunarcrush": lc_data,
@@ -316,4 +333,5 @@ async def get_intelligence(request: Request):
         "social_trending": trending_data,
         "whale_detection": whale_data,
         "btc_dominance": btc_data,
+        "dynamic_pairs": dynamic_pairs_data,
     }

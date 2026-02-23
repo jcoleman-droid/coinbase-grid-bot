@@ -150,6 +150,18 @@ class BTCDominanceConfig(BaseModel):
     cache_ttl_secs: float = Field(default=300.0, ge=60)
 
 
+class DynamicPairSelectorConfig(BaseModel):
+    enabled: bool = True
+    evaluation_interval_secs: float = Field(default=10800.0, ge=1800)
+    swap_score_threshold: float = Field(default=1.5, ge=0.5)
+    range_pct: float = Field(default=25.0, ge=5, le=50)
+    candidate_pool: list[str] = Field(default_factory=lambda: [
+        "PEPE/USD", "DOGE/USD", "WIF/USD", "SHIB/USD",
+        "SOL/USD", "ADA/USD", "XRP/USD", "SUI/USD",
+        "LINK/USD", "AVAX/USD",
+    ])
+
+
 class BotConfig(BaseModel):
     exchange: ExchangeConfig
     grids: list[GridConfig]
@@ -171,6 +183,7 @@ class BotConfig(BaseModel):
     social_trending: SocialTrendingConfig = SocialTrendingConfig()
     whale_detector: WhaleDetectorConfig = WhaleDetectorConfig()
     btc_dominance: BTCDominanceConfig = BTCDominanceConfig()
+    dynamic_pairs: DynamicPairSelectorConfig = DynamicPairSelectorConfig()
 
     @model_validator(mode="before")
     @classmethod

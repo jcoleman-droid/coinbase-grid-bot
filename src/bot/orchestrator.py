@@ -33,6 +33,7 @@ from ..risk.position_stop_loss import PositionStopLoss
 from ..strategy.dip_sniper import DipSniper
 from ..strategy.grid_engine import GridEngine, smart_price_round
 from ..strategy.momentum_rider import MomentumRider
+from ..strategy.dynamic_pair_selector import DynamicPairSelector
 from ..strategy.pair_rotator import PairRotator
 from ..strategy.trend_filter import TrendFilter
 
@@ -74,6 +75,7 @@ class BotOrchestrator:
         self._social_trending: SocialTrending | None = None
         self._whale_detector: WhaleDetector | None = None
         self._btc_dominance: BTCDominanceProvider | None = None
+        self._dynamic_selector: DynamicPairSelector | None = None
         self._intelligence_task: asyncio.Task | None = None
         self._shutdown_event = asyncio.Event()
         self._main_task: asyncio.Task | None = None
@@ -201,6 +203,10 @@ class BotOrchestrator:
                 cache_ttl_secs=self._config.btc_dominance.cache_ttl_secs,
             )
             logger.info("btc_dominance_initialized")
+
+        if self._config.dynamic_pairs.enabled:
+            self._dynamic_selector = DynamicPairSelector(self._config.dynamic_pairs)
+            logger.info("dynamic_pair_selector_initialized")
 
         # Dip Sniper strategy (shares pool with grid)
         if self._config.dip_sniper.enabled:
@@ -421,6 +427,10 @@ class BotOrchestrator:
                             sym, self._exchange, self._position
                         )
 
+                # ── Dynamic pair selector ──
+                if self._dynamic_selector and self._dynamic_selector.should_evaluate():
+                    await self._dynamic_selector.evaluate_and_swap(self)
+
                 # ── Global checks ──
                 total_equity = self._position.total_equity_usd if self._position else 0
                 if self._risk_mgr.check_drawdown(total_equity):
@@ -476,7 +486,13 @@ class BotOrchestrator:
         try:
             while not self._shutdown_event.is_set():
                 if self._lunarcrush:
-                    await self._lunarcrush.fetch_scores(self.symbols)
+                    all_symbols = list(
+                        dict.fromkeys(
+                            self.symbols
+                            + (self._config.dynamic_pairs.candidate_pool if self._config.dynamic_pairs.enabled else [])
+                        )
+                    )
+                    await self._lunarcrush.fetch_scores(all_symbols)
                     # Feed volume data to tracker
                     if self._volume_tracker:
                         for sym, score in self._lunarcrush.get_all_scores().items():
@@ -555,6 +571,24 @@ class BotOrchestrator:
         await new_engine.initialize_grid()
         self._grid_engines[sym] = new_engine
         logger.info("bot_reconfigured", symbol=sym)
+
+    async def swap_pair(self, old_symbol: str, new_grid_config: GridConfig) -> None:
+        """Replace old_symbol grid with new_grid_config (different symbol)."""
+        # Cancel and remove old pair
+        old_engine = self._grid_engines.pop(old_symbol, None)
+        if old_engine:
+            await old_engine.cancel_all_grid_orders()
+        self._config.grids = [g for g in self._config.grids if g.symbol != old_symbol]
+
+        # Add new pair
+        new_engine = GridEngine(
+            new_grid_config, self._config.risk,
+            self._exchange, self._order_mgr, self._risk_mgr,
+        )
+        await new_engine.initialize_grid()
+        self._grid_engines[new_grid_config.symbol] = new_engine
+        self._config.grids.append(new_grid_config)
+        logger.info("pair_swapped", removed=old_symbol, added=new_grid_config.symbol)
 
     @property
     def status(self) -> BotStatus:
@@ -638,3 +672,7 @@ class BotOrchestrator:
     @property
     def btc_dominance(self) -> BTCDominanceProvider | None:
         return self._btc_dominance
+
+    @property
+    def dynamic_selector(self) -> DynamicPairSelector | None:
+        return self._dynamic_selector
