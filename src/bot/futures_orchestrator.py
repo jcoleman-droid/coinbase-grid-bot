@@ -106,31 +106,36 @@ class FuturesBotOrchestrator:
             api_secret=self._settings.kraken_futures_api_secret,
             sandbox=self._config.exchange.sandbox,
         )
-        await self._exchange.connect()
+        try:
+            await self._exchange.connect()
 
-        # Set leverage for each pair
-        for grid_cfg in self._config.grids:
-            await self._exchange.set_leverage(grid_cfg.symbol, self._config.exchange.leverage)
+            # Set leverage for each pair
+            for grid_cfg in self._config.grids:
+                await self._exchange.set_leverage(grid_cfg.symbol, self._config.exchange.leverage)
 
-        # Order manager
-        self._order_mgr = OrderManager(self._exchange, order_repo, level_repo)
-        for grid_cfg in self._config.grids:
-            await self._order_mgr.reconcile_with_exchange(grid_cfg.symbol)
+            # Order manager
+            self._order_mgr = OrderManager(self._exchange, order_repo, level_repo)
+            for grid_cfg in self._config.grids:
+                await self._order_mgr.reconcile_with_exchange(grid_cfg.symbol)
 
-        # Fetch live prices
-        await self._refresh_prices()
+            # Fetch live prices
+            await self._refresh_prices()
 
-        # Create one FuturesGridEngine per pair and deploy initial direction
-        for grid_cfg in self._config.grids:
-            engine = FuturesGridEngine(
-                config=grid_cfg,
-                risk_config=self._config.risk,
-                exchange=self._exchange,
-                order_manager=self._order_mgr,
-            )
-            initial_direction = self._decide_direction(grid_cfg.symbol, grid_cfg.direction)
-            await engine.initialize_grid(initial_direction)
-            self._futures_engines[grid_cfg.symbol] = engine
+            # Create one FuturesGridEngine per pair and deploy initial direction
+            for grid_cfg in self._config.grids:
+                engine = FuturesGridEngine(
+                    config=grid_cfg,
+                    risk_config=self._config.risk,
+                    exchange=self._exchange,
+                    order_manager=self._order_mgr,
+                )
+                initial_direction = self._decide_direction(grid_cfg.symbol, grid_cfg.direction)
+                await engine.initialize_grid(initial_direction)
+                self._futures_engines[grid_cfg.symbol] = engine
+        except Exception:
+            await self._exchange.close()
+            self._exchange = None
+            raise
 
         self._status = BotStatus.RUNNING
         logger.info("futures_bot_running", pairs=len(self._futures_engines))
