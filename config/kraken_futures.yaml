@@ -5,10 +5,28 @@ exchange:
 
 grids:
   # ── 20% range, 8 levels (~2.5% per level), $75 orders, 3x leverage ──
+  - symbol: "BTC/USD"
+    num_levels: 8
+    order_size_usd: 75.0
+    direction: auto
+    range_pct: 20.0
+
+  - symbol: "ETH/USD"
+    num_levels: 8
+    order_size_usd: 75.0
+    direction: auto
+    range_pct: 20.0
+
   - symbol: "SOL/USD"
     num_levels: 8
     order_size_usd: 75.0
     direction: auto         # long in uptrend, short in downtrend
+    range_pct: 20.0
+
+  - symbol: "XRP/USD"
+    num_levels: 8
+    order_size_usd: 75.0
+    direction: auto
     range_pct: 20.0
 
   - symbol: "DOGE/USD"
@@ -17,7 +35,19 @@ grids:
     direction: auto
     range_pct: 20.0
 
-  - symbol: "XRP/USD"
+  - symbol: "ADA/USD"
+    num_levels: 8
+    order_size_usd: 75.0
+    direction: auto
+    range_pct: 20.0
+
+  - symbol: "AVAX/USD"
+    num_levels: 8
+    order_size_usd: 75.0
+    direction: auto
+    range_pct: 20.0
+
+  - symbol: "LINK/USD"
     num_levels: 8
     order_size_usd: 75.0
     direction: auto
