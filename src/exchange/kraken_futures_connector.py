@@ -33,14 +33,8 @@ class KrakenFuturesConnector:
             "secret": api_secret,
             "enableRateLimit": True,
             "options": {"defaultType": "swap"},
+            "sandbox": sandbox,
         }
-        if sandbox:
-            config["urls"] = {
-                "api": {
-                    "public": "https://demo-futures.kraken.com/derivatives/api/v3",
-                    "private": "https://demo-futures.kraken.com/derivatives/api/v3",
-                }
-            }
         self._exchange = ccxt.krakenfutures(config)
         self._rate_limiter = TokenBucketRateLimiter(rate=10, capacity=15)
         self._sandbox = sandbox
