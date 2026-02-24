@@ -4,12 +4,15 @@ import asyncio
 import os
 
 import click
+import structlog
 import uvicorn
 
 from .config.settings import Settings, load_config, load_futures_config
 from .bot.orchestrator import BotOrchestrator
 from .bot.futures_orchestrator import FuturesBotOrchestrator
 from .utils.logging import setup_logging
+
+_log = structlog.get_logger()
 
 
 @click.group()
@@ -41,14 +44,18 @@ def run(config: str, futures_config: str, dashboard: bool) -> None:
 
         # Create futures bot after spot bot is running so we can share intelligence
         if futures_config:
-            futures_cfg = load_futures_config(futures_config)
-            futures_bot = FuturesBotOrchestrator(
-                config=futures_cfg,
-                settings=settings,
-                shared_trend_filter=bot.trend_filter,
-                shared_lunarcrush=bot.lunarcrush,
-            )
-            await futures_bot.start()
+            try:
+                futures_cfg = load_futures_config(futures_config)
+                futures_bot = FuturesBotOrchestrator(
+                    config=futures_cfg,
+                    settings=settings,
+                    shared_trend_filter=bot.trend_filter,
+                    shared_lunarcrush=bot.lunarcrush,
+                )
+                await futures_bot.start()
+            except Exception as exc:
+                _log.error("futures_bot_start_failed", error=str(exc))
+                futures_bot = None
 
         if dashboard:
             from .dashboard.app import create_dashboard_app
