@@ -18,6 +18,10 @@
             <div class="logo-icon">Br</div>
             <span>Heisenberg<span style="color:var(--text-muted);font-weight:400;font-size:11px;margin-left:6px">Grid</span></span>
         </div>
+        <div class="view-tabs">
+            <button class="view-tab active" id="view-tab-spot" onclick="switchView('spot')">Spot</button>
+            <button class="view-tab" id="view-tab-futures" onclick="switchView('futures')">⚡ Futures</button>
+        </div>
         <select id="pair-selector" class="pair-badge" onchange="selectPair(this.value)">
             <option value="__all__">All Pairs</option>
         </select>
@@ -41,7 +45,7 @@
 </div>
 
 <!-- ─── Main Layout ─── -->
-<div class="main">
+<div class="main" id="main-view">
 
     <!-- Stat Bar -->
     <div class="stat-bar">
@@ -193,8 +197,8 @@
     </div>
 </div>
 
-<!-- ─── Futures Section ─── -->
-<div class="futures-section" id="futures-section" style="display:none">
+<!-- ─── Futures View ─── -->
+<div class="futures-view" id="futures-view" style="display:none">
     <div class="futures-section-header">
         <div class="futures-title">
             <span class="futures-icon">⚡</span>
@@ -206,13 +210,15 @@
                 <span class="label">Margin Used</span>
                 <span class="value" id="fut-margin">0.0%</span>
             </div>
-            <div class="status-pill status-running" id="fut-status-pill">
+            <div class="status-pill status-idle" id="fut-status-pill">
                 <span class="dot"></span>
-                <span id="fut-status-text">RUNNING</span>
+                <span id="fut-status-text">LOADING</span>
             </div>
         </div>
     </div>
-    <div class="futures-cards" id="futures-cards"></div>
+    <div class="futures-cards" id="futures-cards">
+        <div class="empty-state" style="grid-column:1/-1;padding:60px">Connecting to Kraken Futures...</div>
+    </div>
 </div>
 
 <!-- Toast -->

@@ -6,6 +6,17 @@ let chartPeriod = '24h';
 let lastData = null;
 let selectedPair = '__all__';
 let knownPairs = new Set();
+let currentView = 'spot';
+
+// ─── View Switching ───
+function switchView(view) {
+    currentView = view;
+    document.getElementById('main-view').style.display = view === 'spot' ? '' : 'none';
+    document.getElementById('futures-view').style.display = view === 'futures' ? '' : 'none';
+    document.getElementById('pair-selector').style.display = view === 'spot' ? '' : 'none';
+    document.getElementById('view-tab-spot').classList.toggle('active', view === 'spot');
+    document.getElementById('view-tab-futures').classList.toggle('active', view === 'futures');
+}
 
 // ─── Formatting ───
 const fmt = (n, d = 2) => Number(n).toLocaleString(undefined, { minimumFractionDigits: d, maximumFractionDigits: d });
@@ -491,30 +502,23 @@ async function fetchFutures() {
         const data = await res.json();
         renderFutures(data);
     } catch (e) {
-        // futures endpoint unreachable — hide section
-        document.getElementById('futures-section').style.display = 'none';
+        // futures endpoint unreachable — leave view as-is
     }
 }
 
 function renderFutures(data) {
-    const section = document.getElementById('futures-section');
-    if (!data || !data.enabled) {
-        section.style.display = 'none';
-        return;
-    }
-    section.style.display = '';
-
     // Header stats
-    const marginPct = ((data.margin_utilization || 0) * 100).toFixed(1) + '%';
+    const marginPct = ((data && data.margin_utilization || 0) * 100).toFixed(1) + '%';
     document.getElementById('fut-margin').textContent = marginPct;
 
     const pill = document.getElementById('fut-status-pill');
     const pillText = document.getElementById('fut-status-text');
-    pill.className = 'status-pill status-' + (data.status || 'idle');
-    pillText.textContent = (data.status || 'idle').toUpperCase();
+    const st = (data && data.enabled) ? (data.status || 'idle') : 'idle';
+    pill.className = 'status-pill status-' + st;
+    pillText.textContent = (data && data.enabled) ? st.toUpperCase() : 'OFFLINE';
 
     // Pair cards
-    const pairs = data.pairs || {};
+    const pairs = (data && data.pairs) || {};
     const container = document.getElementById('futures-cards');
     container.innerHTML = Object.entries(pairs).map(([sym, p]) => {
         const hasPos = p.open_position_size > 0;
