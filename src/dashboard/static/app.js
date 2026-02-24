@@ -517,13 +517,24 @@ function renderFutures(data) {
     pill.className = 'status-pill status-' + st;
     pillText.textContent = (data && data.enabled) ? st.toUpperCase() : 'OFFLINE';
 
+    // Stat bar
+    const bal = data && data.account_balance || 0;
+    const upnl = data && data.total_unrealized_pnl || 0;
+    document.getElementById('fut-balance').textContent = fmtUsd(bal);
+    const upnlEl = document.getElementById('fut-upnl');
+    upnlEl.textContent = fmtPnl(upnl);
+    upnlEl.style.color = pnlColor(upnl);
+    document.getElementById('fut-pos-count').textContent = data && data.open_position_count || 0;
+    document.getElementById('fut-pair-count').textContent = (data && data.symbols) ? data.symbols.length : 0;
+
     // Pair cards
     const pairs = (data && data.pairs) || {};
     const container = document.getElementById('futures-cards');
     container.innerHTML = Object.entries(pairs).map(([sym, p]) => {
         const hasPos = p.open_position_size > 0;
+        const pnlColor = p.unrealized_pnl > 0 ? 'var(--green)' : p.unrealized_pnl < 0 ? 'var(--red)' : 'var(--text-muted)';
         const posLabel = hasPos
-            ? `<div class="fut-position-bar">POS ${p.open_position_size.toFixed(4)} ${sym.split('/')[0]}</div>`
+            ? `<div class="fut-position-bar">POS ${p.open_position_size.toFixed(4)} ${sym.split('/')[0]} &nbsp;|&nbsp; <span style="color:${pnlColor}">${fmtPnl(p.unrealized_pnl || 0)}</span></div>`
             : '';
         const lockLabel = !p.can_switch
             ? '<span class="fut-locked">⏱ DIR LOCKED</span>'

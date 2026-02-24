@@ -6,7 +6,7 @@
     <title>Heisenberg Grid</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="/static/style.css?v=5">
+    <link rel="stylesheet" href="/static/style.css?v=6">
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4/dist/chart.umd.min.js"></script>
 </head>
 <body>
@@ -216,6 +216,33 @@
             </div>
         </div>
     </div>
+    <!-- Stat Bar -->
+    <div class="stat-bar fut-stat-bar">
+        <div class="stat-item">
+            <span class="label">Account Balance</span>
+            <span class="value" id="fut-balance">$0.00</span>
+        </div>
+        <div class="stat-item">
+            <span class="label">Unrealized P&L</span>
+            <span class="value" id="fut-upnl">$0.00</span>
+        </div>
+        <div class="stat-item">
+            <span class="label">Open Positions</span>
+            <span class="value" id="fut-pos-count">0</span>
+        </div>
+        <div class="stat-item">
+            <span class="label">Active Pairs</span>
+            <span class="value" id="fut-pair-count">0</span>
+        </div>
+        <div class="stat-item">
+            <span class="label">Leverage</span>
+            <span class="value" style="color:var(--crystal-blue)">3x</span>
+        </div>
+        <div class="stat-item">
+            <span class="label">Mode</span>
+            <span class="value" style="color:var(--yellow)">TESTNET</span>
+        </div>
+    </div>
     <div class="futures-cards" id="futures-cards">
         <div class="empty-state" style="grid-column:1/-1;padding:60px">Connecting to Kraken Futures...</div>
     </div>
@@ -224,6 +251,6 @@
 <!-- Toast -->
 <div class="toast" id="toast"></div>
 
-<script src="/static/app.js?v=5"></script>
+<script src="/static/app.js?v=6"></script>
 </body>
 </html>
