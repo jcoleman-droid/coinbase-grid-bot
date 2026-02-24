@@ -6,7 +6,7 @@ let chartPeriod = '24h';
 let lastData = null;
 let selectedPair = '__all__';
 let knownPairs = new Set();
-let currentView = 'spot';
+let currentView = 'futures';
 
 // ─── View Switching ───
 function switchView(view) {

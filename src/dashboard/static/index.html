@@ -19,8 +19,8 @@
             <span>Heisenberg<span style="color:var(--text-muted);font-weight:400;font-size:11px;margin-left:6px">Grid</span></span>
         </div>
         <div class="view-tabs">
-            <button class="view-tab active" id="view-tab-spot" onclick="switchView('spot')">Spot</button>
-            <button class="view-tab" id="view-tab-futures" onclick="switchView('futures')">⚡ Futures</button>
+            <button class="view-tab" id="view-tab-spot" onclick="switchView('spot')">Spot</button>
+            <button class="view-tab active" id="view-tab-futures" onclick="switchView('futures')">⚡ Futures</button>
         </div>
         <select id="pair-selector" class="pair-badge" onchange="selectPair(this.value)">
             <option value="__all__">All Pairs</option>
@@ -45,7 +45,7 @@
 </div>
 
 <!-- ─── Main Layout ─── -->
-<div class="main" id="main-view">
+<div class="main" id="main-view" style="display:none">
 
     <!-- Stat Bar -->
     <div class="stat-bar">
@@ -198,7 +198,7 @@
 </div>
 
 <!-- ─── Futures View ─── -->
-<div class="futures-view" id="futures-view" style="display:none">
+<div class="futures-view" id="futures-view">
     <div class="futures-section-header">
         <div class="futures-title">
             <span class="futures-icon">⚡</span>
