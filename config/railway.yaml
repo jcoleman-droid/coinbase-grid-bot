@@ -4,39 +4,39 @@ exchange:
   rate_limit_ms: 100
 
 grids:
-  # ── 25% ranges, 8 levels (~3.1% per level), $100 orders ──
+  # ── 12% ranges, 12 levels (~1.1% per level), $100 orders ──
   - symbol: "PEPE/USD"
-    lower_price: 0.0000035
-    upper_price: 0.0000044
-    num_levels: 8
+    lower_price: 0.0000037
+    upper_price: 0.0000042
+    num_levels: 12
     spacing: arithmetic
     order_size_usd: 100.0
     trailing_enabled: true
-    trailing_trigger_pct: 85.0
+    trailing_trigger_pct: 80.0
     trailing_rebalance_pct: 50.0
-    trailing_cooldown_secs: 600.0
+    trailing_cooldown_secs: 300.0
 
   - symbol: "DOGE/USD"
-    lower_price: 0.083
-    upper_price: 0.107
-    num_levels: 8
+    lower_price: 0.087
+    upper_price: 0.098
+    num_levels: 12
     spacing: arithmetic
     order_size_usd: 100.0
     trailing_enabled: true
-    trailing_trigger_pct: 85.0
+    trailing_trigger_pct: 80.0
     trailing_rebalance_pct: 50.0
-    trailing_cooldown_secs: 600.0
+    trailing_cooldown_secs: 300.0
 
   - symbol: "WIF/USD"
-    lower_price: 0.19
-    upper_price: 0.24
-    num_levels: 8
+    lower_price: 0.187
+    upper_price: 0.211
+    num_levels: 12
     spacing: arithmetic
     order_size_usd: 100.0
     trailing_enabled: true
-    trailing_trigger_pct: 85.0
+    trailing_trigger_pct: 80.0
     trailing_rebalance_pct: 50.0
-    trailing_cooldown_secs: 600.0
+    trailing_cooldown_secs: 300.0
 
 pool:
   initial_balance_usd: 2000.0
@@ -132,7 +132,7 @@ dynamic_pairs:
   enabled: true
   evaluation_interval_secs: 10800
   swap_score_threshold: 1.5
-  range_pct: 25.0
+  range_pct: 12.0
   candidate_pool:
     - "PEPE/USD"
     - "DOGE/USD"
