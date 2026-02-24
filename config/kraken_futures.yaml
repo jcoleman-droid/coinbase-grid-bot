@@ -1,0 +1,44 @@
+exchange:
+  name: krakenfutures
+  sandbox: true          # set to false when ready for live trading
+  leverage: 3
+
+grids:
+  # ── 20% range, 8 levels (~2.5% per level), $75 orders, 3x leverage ──
+  - symbol: "SOL/USD"
+    num_levels: 8
+    order_size_usd: 75.0
+    direction: auto         # long in uptrend, short in downtrend
+    range_pct: 20.0
+
+  - symbol: "DOGE/USD"
+    num_levels: 8
+    order_size_usd: 75.0
+    direction: auto
+    range_pct: 20.0
+
+  - symbol: "XRP/USD"
+    num_levels: 8
+    order_size_usd: 75.0
+    direction: auto
+    range_pct: 20.0
+
+risk:
+  max_position_usd_per_pair: 300.0   # $300 collateral = $900 notional at 3x
+  max_drawdown_pct: 20.0             # emergency stop
+  margin_utilization_limit: 0.75     # pause grid above 75% margin used
+
+direction_filter:
+  min_hold_secs: 1800                # 30 min before direction switch allowed
+  long_window: 120                   # ~10 min of data at 5s poll
+  short_window: 20                   # ~100s of data at 5s poll
+
+paper_trading:
+  enabled: false
+  initial_balance_usd: 2000.0
+  simulated_fee_pct: 0.0005          # Kraken maker fee
+
+dashboard:
+  host: "0.0.0.0"
+  port: 8080
+  enable_controls: true

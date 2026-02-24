@@ -162,6 +162,44 @@ class DynamicPairSelectorConfig(BaseModel):
     ])
 
 
+# ── Futures Bot Config ────────────────────────────────────────────────────────
+
+class FuturesExchangeConfig(BaseModel):
+    name: str = "krakenfutures"
+    sandbox: bool = True
+    leverage: int = Field(default=3, ge=1, le=5)
+
+
+class FuturesGridConfig(BaseModel):
+    symbol: str
+    num_levels: int = Field(default=8, ge=2, le=50)
+    order_size_usd: float = Field(default=75.0, gt=0)
+    direction: str = "auto"          # "auto", "long", "short"
+    range_pct: float = Field(default=20.0, ge=5, le=40)
+    trailing_enabled: bool = False
+
+
+class FuturesRiskConfig(BaseModel):
+    max_position_usd_per_pair: float = Field(default=300.0, gt=0)
+    max_drawdown_pct: float = Field(default=20.0, gt=0)
+    margin_utilization_limit: float = Field(default=0.75, gt=0, le=1.0)
+
+
+class DirectionFilterConfig(BaseModel):
+    min_hold_secs: float = Field(default=1800.0, ge=60)
+    long_window: int = Field(default=120, ge=5)
+    short_window: int = Field(default=20, ge=3)
+
+
+class FuturesBotConfig(BaseModel):
+    exchange: FuturesExchangeConfig = FuturesExchangeConfig()
+    grids: list[FuturesGridConfig]
+    risk: FuturesRiskConfig = FuturesRiskConfig()
+    direction_filter: DirectionFilterConfig = DirectionFilterConfig()
+    paper_trading: PaperTradingConfig = PaperTradingConfig()
+    dashboard: DashboardConfig = DashboardConfig()
+
+
 class BotConfig(BaseModel):
     exchange: ExchangeConfig
     grids: list[GridConfig]

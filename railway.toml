@@ -2,6 +2,6 @@
 builder = "nixpacks"
 
 [deploy]
-startCommand = "python -m src.main run --config config/railway.yaml --dashboard"
+startCommand = "python -m src.main run --config config/railway.yaml --futures-config config/kraken_futures.yaml --dashboard"
 healthcheckPath = "/api/status"
 restartPolicyType = "always"

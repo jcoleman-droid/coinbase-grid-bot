@@ -6,8 +6,9 @@ import os
 import click
 import uvicorn
 
-from .config.settings import Settings, load_config
+from .config.settings import Settings, load_config, load_futures_config
 from .bot.orchestrator import BotOrchestrator
+from .bot.futures_orchestrator import FuturesBotOrchestrator
 from .utils.logging import setup_logging
 
 
@@ -19,22 +20,40 @@ def cli():
 
 @cli.command()
 @click.option("--config", default="config/default.yaml", help="Config file path")
+@click.option("--futures-config", default="", help="Kraken futures config file path (optional)")
 @click.option("--dashboard/--no-dashboard", default=True, help="Run web dashboard")
-def run(config: str, dashboard: bool) -> None:
-    """Start the grid trading bot."""
+def run(config: str, futures_config: str, dashboard: bool) -> None:
+    """Start the grid trading bot (optionally with Kraken futures bot alongside)."""
     settings = Settings(config_path=config)
     bot_config = load_config(settings)
     setup_logging()
 
     bot = BotOrchestrator(bot_config, settings)
 
+    futures_bot: FuturesBotOrchestrator | None = None
+    if futures_config:
+        futures_cfg = load_futures_config(futures_config)
+        futures_bot = None  # created after spot bot starts (to share intelligence)
+
     async def _main() -> None:
+        nonlocal futures_bot
         await bot.start()
+
+        # Create futures bot after spot bot is running so we can share intelligence
+        if futures_config:
+            futures_cfg = load_futures_config(futures_config)
+            futures_bot = FuturesBotOrchestrator(
+                config=futures_cfg,
+                settings=settings,
+                shared_trend_filter=bot.trend_filter,
+                shared_lunarcrush=bot.lunarcrush,
+            )
+            await futures_bot.start()
 
         if dashboard:
             from .dashboard.app import create_dashboard_app
 
-            app = create_dashboard_app(bot)
+            app = create_dashboard_app(bot, futures_bot=futures_bot)
             port = int(os.environ.get("PORT", bot_config.dashboard.port))
             uv_config = uvicorn.Config(
                 app,
@@ -47,6 +66,8 @@ def run(config: str, dashboard: bool) -> None:
                 await server.serve()
             finally:
                 await bot.stop()
+                if futures_bot:
+                    await futures_bot.stop()
         else:
             try:
                 while bot.status.value == "running":
@@ -55,6 +76,8 @@ def run(config: str, dashboard: bool) -> None:
                 pass
             finally:
                 await bot.stop()
+                if futures_bot:
+                    await futures_bot.stop()
 
     asyncio.run(_main())
 
