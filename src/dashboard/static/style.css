@@ -225,6 +225,7 @@ button {
     gap: 1px;
     background: var(--border);
     height: calc(100vh - 56px);
+    min-height: 500px;
 }
 
 /* ─── Stat Bar ─── */
@@ -584,6 +585,170 @@ td.sell { color: var(--red); font-weight: 700; }
     .stat-bar { flex-wrap: wrap; height: auto; padding: 8px 16px; gap: 4px; }
     .chart-panel { min-height: 250px; }
     .orders-panel { height: 250px; }
+}
+
+/* ─── Futures Section ─── */
+.futures-section {
+    background: var(--bg-primary);
+    border-top: 1px solid rgba(66, 165, 245, 0.2);
+    padding: 0 0 24px;
+}
+
+.futures-section-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 14px 24px;
+    background: linear-gradient(90deg, rgba(66, 165, 245, 0.04) 0%, transparent 60%);
+    border-bottom: 1px solid var(--border);
+}
+
+.futures-title {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-weight: 700;
+    font-size: 12px;
+    text-transform: uppercase;
+    letter-spacing: 2px;
+    color: var(--crystal-blue);
+}
+
+.futures-icon {
+    font-size: 16px;
+}
+
+.futures-subtitle {
+    font-size: 9px;
+    font-weight: 400;
+    color: var(--text-muted);
+    letter-spacing: 1px;
+    text-transform: uppercase;
+}
+
+.futures-header-right {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+}
+
+.fut-stat-chip {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.fut-stat-chip .label {
+    font-size: 9px;
+    text-transform: uppercase;
+    letter-spacing: 1.5px;
+    color: var(--text-muted);
+}
+
+.fut-stat-chip .value {
+    font-size: 14px;
+    font-weight: 700;
+    color: var(--crystal-blue);
+    font-variant-numeric: tabular-nums;
+}
+
+.futures-cards {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    gap: 1px;
+    background: var(--border);
+    padding: 0;
+    margin: 0 0 0 0;
+}
+
+.fut-card {
+    background: var(--bg-secondary);
+    padding: 14px 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    transition: background 0.15s;
+    cursor: default;
+}
+
+.fut-card:hover { background: var(--bg-hover); }
+
+.fut-card-top {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.fut-symbol {
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--text-primary);
+    letter-spacing: 0.5px;
+}
+
+.fut-dir {
+    font-size: 9px;
+    font-weight: 700;
+    padding: 3px 8px;
+    border-radius: 2px;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+}
+
+.fut-dir.long {
+    background: var(--green-dim);
+    color: var(--green);
+    border: 1px solid rgba(0, 230, 118, 0.3);
+}
+
+.fut-dir.short {
+    background: var(--red-dim);
+    color: var(--red);
+    border: 1px solid rgba(255, 23, 68, 0.3);
+}
+
+.fut-price {
+    font-size: 18px;
+    font-weight: 700;
+    color: var(--heisenberg);
+    font-variant-numeric: tabular-nums;
+    text-shadow: 0 0 12px rgba(0, 200, 83, 0.2);
+}
+
+.fut-card-stats {
+    display: flex;
+    gap: 16px;
+}
+
+.fut-mini-stat .label {
+    font-size: 8px;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    color: var(--text-muted);
+    margin-bottom: 2px;
+}
+
+.fut-mini-stat .value {
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--text-secondary);
+    font-variant-numeric: tabular-nums;
+}
+
+.fut-position-bar {
+    font-size: 10px;
+    color: var(--crystal-blue);
+    background: var(--crystal-dim);
+    padding: 3px 8px;
+    border-radius: 2px;
+    border: 1px solid rgba(66, 165, 245, 0.2);
+    font-weight: 600;
+}
+
+.fut-locked {
+    font-size: 9px;
+    color: var(--yellow);
+    letter-spacing: 0.5px;
 }
 
 /* ─── Mobile ─── */

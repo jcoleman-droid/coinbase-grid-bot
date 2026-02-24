@@ -477,9 +477,77 @@ function showToast(msg, type = 'success') {
     toastTimeout = setTimeout(() => el.classList.remove('visible'), 3000);
 }
 
+// ─── Futures ───
+function fmtPrice(n) {
+    if (n >= 1000) return '$' + fmt(n, 0);
+    if (n >= 1) return '$' + fmt(n, 3);
+    if (n >= 0.01) return '$' + fmt(n, 4);
+    return '$' + Number(n).toPrecision(4);
+}
+
+async function fetchFutures() {
+    try {
+        const res = await fetch('/api/futures/status');
+        const data = await res.json();
+        renderFutures(data);
+    } catch (e) {
+        // futures endpoint unreachable — hide section
+        document.getElementById('futures-section').style.display = 'none';
+    }
+}
+
+function renderFutures(data) {
+    const section = document.getElementById('futures-section');
+    if (!data || !data.enabled) {
+        section.style.display = 'none';
+        return;
+    }
+    section.style.display = '';
+
+    // Header stats
+    const marginPct = ((data.margin_utilization || 0) * 100).toFixed(1) + '%';
+    document.getElementById('fut-margin').textContent = marginPct;
+
+    const pill = document.getElementById('fut-status-pill');
+    const pillText = document.getElementById('fut-status-text');
+    pill.className = 'status-pill status-' + (data.status || 'idle');
+    pillText.textContent = (data.status || 'idle').toUpperCase();
+
+    // Pair cards
+    const pairs = data.pairs || {};
+    const container = document.getElementById('futures-cards');
+    container.innerHTML = Object.entries(pairs).map(([sym, p]) => {
+        const hasPos = p.open_position_size > 0;
+        const posLabel = hasPos
+            ? `<div class="fut-position-bar">POS ${p.open_position_size.toFixed(4)} ${sym.split('/')[0]}</div>`
+            : '';
+        const lockLabel = !p.can_switch
+            ? '<span class="fut-locked">⏱ DIR LOCKED</span>'
+            : '';
+        return `
+        <div class="fut-card">
+            <div class="fut-card-top">
+                <span class="fut-symbol">${sym}</span>
+                <span class="fut-dir ${p.direction}">${p.direction.toUpperCase()}</span>
+            </div>
+            <div class="fut-price">${fmtPrice(p.current_price)}</div>
+            <div class="fut-card-stats">
+                <div class="fut-mini-stat">
+                    <div class="label">Levels</div>
+                    <div class="value">${p.levels_placed} active</div>
+                </div>
+                ${lockLabel ? `<div class="fut-mini-stat">${lockLabel}</div>` : ''}
+            </div>
+            ${posLabel}
+        </div>`;
+    }).join('');
+}
+
 // ─── Init ───
 connectWebSocket();
 fetchOrders();
 fetchEquityCurve();
+fetchFutures();
 setInterval(fetchOrders, 10000);
 setInterval(fetchEquityCurve, 30000);
+setInterval(fetchFutures, 5000);
